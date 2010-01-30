@@ -127,6 +127,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  *     a second execution is attempted.)</li>
  * </ul>
  */
+
+@SuppressWarnings({"all"})
 public abstract class UserTask<Params, Progress, Result> {
     private static final String LOG_TAG = "UserTask";
 

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+<string name="uncategorized">Uncategorized</string>
+<string name="new_category">New category</string>
+<string name="add_category">Add category</string>
+<string name="ok">Ok</string>
+<string name="cancel">Cancel</string>
+<string name="expand_all">Expand all</string>
+<string name="refresh">Refresh</string>
+<string name="export">Export</string>
+<string name="str_import">Import</string>
+<string name="reset">Reset</string>
+<string name="warning">Warning !!</string>
+<string name="msg_delete_all_cat">All categories will be deleted, continue?</string>
+<string name="confirmation">Confirmation</string>
+<string name="msg_export_configuration">Current configuration will be exported, continue?</string>
+<string name="msg_data_exported">Data exported to \'%s\'</string>
+<string name="msg_current_config_will_be_lost">Current configuration will be lost, continue?</string>
+<string name="msg_data_imported">Data imported from \'%s\'</string>
+<string name="error">Error</string>
+<string name="msg_couldnt_import">The configuration couldn\'t be imported, verify that the file \'%s\' exists and contains valid data</string>
+<string name="collapse_all">Collapse all</string>
+<string name="select_applications">Select applications</string>
+<string name="remove_category">Remove category</string>
+<string name="rename_category">Rename category</string>
+<string name="msg_remove_category">Remove the category?</string>
+<string name="details">See details</string>
+<string name="uninstall">Uninstall</string>
+<string name="remove_from_category">Remove from category</string>
+<string name="select_applications_of">Select applications for %s</string>
+<string name="show_all">Show all</string>
+<string name="no_category">No category assigned</string>
+<string name="select_all">Select all</string>
+<string name="unselect_all">Unselect all</string>
+</resources>

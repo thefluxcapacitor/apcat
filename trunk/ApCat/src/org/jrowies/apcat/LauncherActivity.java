@@ -49,6 +49,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
@@ -102,14 +103,15 @@ public class LauncherActivity extends ExpandableListActivity implements
 	public static PackageManager pm = null;
 	public static AppDatabase appdb = null;
 
-	// TODO: move uncat group name into strings.xml
-	public String GROUP_UNKNOWN = "Uncategorized";
+	public String GROUP_UNKNOWN;
 	private int iconSize = -1;
 
 	public void onCreate(Bundle savedInstanceState)
 	{
 		super.onCreate(savedInstanceState);
 
+		GROUP_UNKNOWN = this.getString(R.string.uncategorized);
+		
 		setContentView(R.layout.act_launch);
 
 		this.inflater = (LayoutInflater) this
@@ -158,7 +160,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 	{
 		super.onCreateOptionsMenu(menu);
 
-		menu.add("Nueva Categoria")
+		menu.add(this.getString(R.string.new_category))
 		.setIcon(R.drawable.add)
 		.setOnMenuItemClickListener(new OnMenuItemClickListener()
 		{
@@ -175,7 +177,8 @@ public class LauncherActivity extends ExpandableListActivity implements
 
 				input.setText("");
 				new AlertDialog.Builder(LauncherActivity.this).setView(fl)
-						.setTitle("Agregar categoria").setPositiveButton("Aceptar",
+						.setTitle(LauncherActivity.this.getString(R.string.add_category))
+						.setPositiveButton(LauncherActivity.this.getString(R.string.ok),
 								new DialogInterface.OnClickListener()
 								{
 									@Override
@@ -197,7 +200,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 											}
 										}
 									}
-								}).setNegativeButton("Cancelar",
+								}).setNegativeButton(LauncherActivity.this.getString(R.string.cancel),
 								new DialogInterface.OnClickListener()
 								{
 									@Override
@@ -211,7 +214,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 			}
 		});
 
-		force = menu.add("Expandir todas").setIcon(android.R.drawable.ic_menu_share)
+		force = menu.add(this.getString(R.string.expand_all)).setIcon(android.R.drawable.ic_menu_share)
 				.setOnMenuItemClickListener(new OnMenuItemClickListener()
 				{
 					public boolean onMenuItemClick(MenuItem item)
@@ -241,7 +244,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 					}
 				});
 
-		menu.add("Refresh").setIcon(R.drawable.ic_menu_refresh)
+		menu.add(LauncherActivity.this.getString(R.string.refresh)).setIcon(R.drawable.ic_menu_refresh)
 				.setOnMenuItemClickListener(new OnMenuItemClickListener()
 				{
 					public boolean onMenuItemClick(MenuItem item)
@@ -251,7 +254,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 					}
 				});
 
-		menu.add("Exportar")
+		menu.add(LauncherActivity.this.getString(R.string.export))
 		.setIcon(R.drawable.export)
 		.setOnMenuItemClickListener(
 				new OnMenuItemClickListener()
@@ -263,7 +266,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 					}
 				});
 
-		menu.add("Importar")
+		menu.add(LauncherActivity.this.getString(R.string.str_import))
 		.setIcon(R.drawable.icon_import)
 		.setOnMenuItemClickListener(
 				new OnMenuItemClickListener()
@@ -275,7 +278,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 					}
 				});
 
-		menu.add("Reset")
+		menu.add(LauncherActivity.this.getString(R.string.reset))
 		.setIcon(R.drawable.reset)
 		.setOnMenuItemClickListener(
 				new OnMenuItemClickListener()
@@ -293,9 +296,9 @@ public class LauncherActivity extends ExpandableListActivity implements
 	private void reset()
 	{
 		new AlertDialog.Builder(LauncherActivity.this)
-		.setTitle("Atención !!")
-		.setMessage("Se van a eliminar todas las categorias, desea continuar?")
-		.setPositiveButton("Aceptar",
+		.setTitle(LauncherActivity.this.getString(R.string.warning))
+		.setMessage(LauncherActivity.this.getString(R.string.msg_delete_all_cat))
+		.setPositiveButton(LauncherActivity.this.getString(R.string.ok),
 			new DialogInterface.OnClickListener()
 			{
 				@Override
@@ -308,16 +311,16 @@ public class LauncherActivity extends ExpandableListActivity implements
 					setListAdapter(null);
 					new ProcessTask().execute();
 				}
-			}).setNegativeButton("Cancelar", null)
+			}).setNegativeButton(LauncherActivity.this.getString(R.string.cancel), null)
 			.create().show();
 	}
 	
 	private void exportData()
 	{
 		new AlertDialog.Builder(LauncherActivity.this)
-			.setTitle("Confirmación")
-			.setMessage("Se va a exportar la configuración actual, desea continuar?")
-			.setPositiveButton("Aceptar",
+			.setTitle(LauncherActivity.this.getString(R.string.confirmation))
+			.setMessage(LauncherActivity.this.getString(R.string.msg_export_configuration))
+			.setPositiveButton(LauncherActivity.this.getString(R.string.ok),
 				new DialogInterface.OnClickListener()
 				{
 					@Override
@@ -377,8 +380,8 @@ public class LauncherActivity extends ExpandableListActivity implements
 							f.close();
 							
 							new AlertDialog.Builder(LauncherActivity.this)
-								.setMessage(String.format("Se exportaron los datos en '%s'", fileName))
-								.setPositiveButton("Aceptar", null)
+								.setMessage(String.format(LauncherActivity.this.getString(R.string.msg_data_exported), fileName))
+								.setPositiveButton(LauncherActivity.this.getString(R.string.ok), null)
 								.create().show();
 							
 						}
@@ -396,16 +399,16 @@ public class LauncherActivity extends ExpandableListActivity implements
 						}
 						
 					}
-				}).setNegativeButton("Cancelar", null)
+				}).setNegativeButton(LauncherActivity.this.getString(R.string.cancel), null)
 				.create().show();
 	}
 
 	private void importData()
 	{
 		new AlertDialog.Builder(LauncherActivity.this)
-			.setTitle("Confirmación")
-			.setMessage("La configuración actual se va a perder, desea continuar con la importación?")
-			.setPositiveButton("Aceptar",
+			.setTitle(LauncherActivity.this.getString(R.string.confirmation))
+			.setMessage(LauncherActivity.this.getString(R.string.msg_current_config_will_be_lost))
+			.setPositiveButton(LauncherActivity.this.getString(R.string.ok),
 				new DialogInterface.OnClickListener()
 				{
 					@Override
@@ -477,8 +480,8 @@ public class LauncherActivity extends ExpandableListActivity implements
 								refresh();
 								
 								new AlertDialog.Builder(LauncherActivity.this)
-								.setMessage(String.format("Se importaron los datos desde '%s'", fileName))
-								.setPositiveButton("Aceptar", null)
+								.setMessage(String.format(LauncherActivity.this.getString(R.string.msg_data_imported), fileName))
+								.setPositiveButton(LauncherActivity.this.getString(R.string.ok), null)
 								.create().show();								
 							}
 						}
@@ -498,14 +501,14 @@ public class LauncherActivity extends ExpandableListActivity implements
 						if (!ok)
 						{
 							new AlertDialog.Builder(LauncherActivity.this)
-							.setTitle("Error")
-							.setMessage(String.format("No fue posible importar los datos, verifique que exista el archivo '%s' y que contenga datos válidos", fileName))
-							.setPositiveButton("Aceptar", null)
+							.setTitle(LauncherActivity.this.getString(R.string.error))
+							.setMessage(String.format(LauncherActivity.this.getString(R.string.msg_couldnt_import), fileName))
+							.setPositiveButton(LauncherActivity.this.getString(R.string.ok), null)
 							.create().show();
 						}
 
 					}
-				}).setNegativeButton("Cancelar", null)
+				}).setNegativeButton(LauncherActivity.this.getString(R.string.cancel), null)
 				.create().show();
 	}
 	
@@ -521,10 +524,10 @@ public class LauncherActivity extends ExpandableListActivity implements
 		{
 			case STATE_UNKNOWN:
 			case STATE_ALL_COLLAP:
-				force.setTitle("Expandir todas");
+				force.setTitle(LauncherActivity.this.getString(R.string.expand_all));
 				break;
 			case STATE_ALL_EXPAND:
-				force.setTitle("Colapsar todas");
+				force.setTitle(LauncherActivity.this.getString(R.string.collapse_all));
 				break;
 		}
 		return true;
@@ -662,6 +665,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 		@Override
 		public void onPostExecute(GroupAdapter result)
 		{
+			
 			updateColumns(result, getResources().getConfiguration());
 			setListAdapter(result);
 
@@ -693,7 +697,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 
 							final RadioButton radioSelectApp = new RadioButton(
 									LauncherActivity.this);
-							radioSelectApp.setText("Seleccionar aplicaciones");
+							radioSelectApp.setText(LauncherActivity.this.getString(R.string.select_applications));
 							radioSelectApp.setTag(groupName);
 							radioSelectApp.setLayoutParams(new LayoutParams(
 									LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT));
@@ -701,14 +705,14 @@ public class LauncherActivity extends ExpandableListActivity implements
 
 							final RadioButton radioDeleteCat = new RadioButton(
 									LauncherActivity.this);
-							radioDeleteCat.setText("Eliminar categoria");
+							radioDeleteCat.setText(LauncherActivity.this.getString(R.string.remove_category));
 							radioDeleteCat.setTag(groupName);
 							radioDeleteCat.setLayoutParams(new LayoutParams(
 									LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT));
 
 							final RadioButton radioRenameCat = new RadioButton(
 									LauncherActivity.this);
-							radioRenameCat.setText("Renombrar categoria");
+							radioRenameCat.setText(LauncherActivity.this.getString(R.string.rename_category));
 							radioRenameCat.setTag(groupName);
 							radioRenameCat.setLayoutParams(new LayoutParams(
 									LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT));
@@ -724,7 +728,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 									FrameLayout.LayoutParams.WRAP_CONTENT));
 
 							new AlertDialog.Builder(LauncherActivity.this).setView(fl)
-									.setPositiveButton("Aceptar",
+									.setPositiveButton(LauncherActivity.this.getString(R.string.ok),
 											new DialogInterface.OnClickListener()
 											{
 												@Override
@@ -736,8 +740,10 @@ public class LauncherActivity extends ExpandableListActivity implements
 														if (radioSelectApp.isChecked())
 														{
 															Intent intent = new Intent();
-															intent.setClassName("org.jrowies.apcat",
-																	"org.jrowies.apcat.AppSelectActivity");
+															
+															intent.setClassName(AppSelectActivity.class.getPackage().getName(),
+																	AppSelectActivity.class.getName());
+															
 															intent.putExtra(
 																	AppSelectActivity.groupNameIntentExtra,
 																	radioSelectApp.getTag().toString());
@@ -747,9 +753,9 @@ public class LauncherActivity extends ExpandableListActivity implements
 														{
 															AlertDialog.Builder builder = new AlertDialog.Builder(
 																	LauncherActivity.this).setTitle(
-																	"Confirmación").setMessage(
-																	"Desea eliminar la categoria?")
-																	.setPositiveButton("Aceptar",
+																			LauncherActivity.this.getString(R.string.confirmation)).setMessage(
+																	LauncherActivity.this.getString(R.string.msg_remove_category))
+																	.setPositiveButton(LauncherActivity.this.getString(R.string.ok),
 																			new DialogInterface.OnClickListener()
 																			{
 																				@Override
@@ -761,7 +767,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 																							.getTag().toString());
 																					refresh();
 																				}
-																			}).setNegativeButton("Cancelar",
+																			}).setNegativeButton(LauncherActivity.this.getString(R.string.cancel),
 																			new DialogInterface.OnClickListener()
 																			{
 																				@Override
@@ -788,7 +794,8 @@ public class LauncherActivity extends ExpandableListActivity implements
 
 															input.setText(radioRenameCat.getTag().toString());
 															new AlertDialog.Builder(LauncherActivity.this).setView(fl)
-																	.setTitle("Renombrar categoria").setPositiveButton("Aceptar",
+																	.setTitle(LauncherActivity.this.getString(R.string.rename_category))
+																	.setPositiveButton(LauncherActivity.this.getString(R.string.ok),
 																			new DialogInterface.OnClickListener()
 																			{
 																				@Override
@@ -810,7 +817,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 																						}
 																					}
 																				}
-																			}).setNegativeButton("Cancelar",
+																			}).setNegativeButton(LauncherActivity.this.getString(R.string.cancel),
 																			new DialogInterface.OnClickListener()
 																			{
 																				@Override
@@ -827,7 +834,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 														Log.e(TAG, "", e);
 													}
 												}
-											}).setNegativeButton("Cancelar",
+											}).setNegativeButton(LauncherActivity.this.getString(R.string.cancel),
 											new DialogInterface.OnClickListener()
 											{
 												@Override
@@ -1077,11 +1084,11 @@ public class LauncherActivity extends ExpandableListActivity implements
 				"com.android.settings.InstalledAppDetails");
 		detailsIntent.putExtra("com.android.settings.ApplicationPkgName",
 				packageName);
-		menu.add("Ver detalles").setIntent(detailsIntent);
+		menu.add(LauncherActivity.this.getString(R.string.details)).setIntent(detailsIntent);
 
 		Intent deleteIntent = new Intent(Intent.ACTION_DELETE);
 		deleteIntent.setData(Uri.parse("package:" + packageName));
-		menu.add("Desinstalar").setIntent(deleteIntent);
+		menu.add(LauncherActivity.this.getString(R.string.uninstall)).setIntent(deleteIntent);
 		
 		try
 		{
@@ -1089,7 +1096,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 			final String categoryName = appdb.getCategory(packageName2);
 			if (categoryName != null && !categoryName.equals(""))
 			{
-				menu.add("Remover de la categoria")
+				menu.add(LauncherActivity.this.getString(R.string.remove_from_category))
 				.setOnMenuItemClickListener(new OnMenuItemClickListener()
 				{
 					public boolean onMenuItemClick(MenuItem item)
@@ -1102,7 +1109,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 		}
 		catch (Exception e)
 		{
-			Log.e(TAG, "Error obteniendo la categoria de la aplicacion", e);
+			Log.e(TAG, "Problem trying to get category", e);
 		}
 	}
 

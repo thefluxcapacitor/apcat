@@ -57,9 +57,12 @@ public class AppDatabase extends SQLiteOpenHelper
 	public final static String FIELD_APP_PACKAGE = "package";
 	public final static String FIELD_APP_DESCRIP = "descrip";
 
+	public String GROUP_UNKNOWN;
+	
 	public AppDatabase(Context context)
 	{
 		super(context, DB_NAME, null, DB_VERSION);
+		GROUP_UNKNOWN = context.getString(R.string.uncategorized);
 	}
 
 	public void getCategories(List<String> categories) throws Exception
@@ -205,7 +208,7 @@ public class AppDatabase extends SQLiteOpenHelper
 					.getString(COL_CATEGORY);
 
 			if ((categoryName == "") || (categoryName == null))
-				packageMappingCache.put(packageName, "Uncategorized");
+				packageMappingCache.put(packageName, GROUP_UNKNOWN);
 			else
 				packageMappingCache.put(packageName, categoryName);
 		}

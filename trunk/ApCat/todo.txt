@@ -1,18 +1,13 @@
 eliminar statics
-limpiar codigo
-hacer que se traduzca todo
-como manejar las excepciones??
-revisar warnings
 revisar los todo del codigo
 que es un inflater?
-ver porque falla cargar las aplicaciones con iconos en el telefono real!!
 usar toast cuando hay excepciones
 
 cambiar pantalla de espera (http://stackoverflow.com/questions/1981156/android-loading-please-wait)
 cambiar icono
 cambiar nombre
 agregar iconos al grupo / modificar aspecto del grupo
-agrgar iconos a las aplicaciones
+agrgar iconos a las aplicaciones (ver porqué falla)
 opcion de ocultar categorias 
 ocultar el reset
 hacer que el programa sea residente asi no tarda tanto en cargar (ver "Saving activity state" en http://developer.android.com/guide/topics/fundamentals.html)
@@ -20,6 +15,8 @@ hacer que el programa sea residente asi no tarda tanto en cargar (ver "Saving ac
 mejorar los iconos horribles
 cambiar el nombre de "Uncategorized"
 mejorar el funcionamiento de expandir todas, colapsar todas, etc...
+cambiar el AlertDialog de las opciones por un menu (metodo onPostExecute de LauncherActivity)
+//hacer que se traduzca todo
 //poder renombrar grupos
 //opcion para mostrar aplicaciones sin grupo asignado
 //mostrar a que grupo pertenece cada aplicacion

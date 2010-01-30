@@ -251,7 +251,7 @@ public class AppSelectActivity extends Activity implements OnClickListener
 		setContentView(R.layout.app_select);
 		
 		TextView titulo = (TextView) findViewById(R.id.TextView01);
-		titulo.setText("Seleccionar aplicaciones de " + groupName);
+		titulo.setText(String.format(this.getString(R.string.select_applications_of), groupName));
 
 		iconSize = (int) getResources().getDimension(android.R.dimen.app_icon_size);
 
@@ -382,7 +382,7 @@ public class AppSelectActivity extends Activity implements OnClickListener
 	{
 		super.onCreateOptionsMenu(menu);
 
-		menu.add("Mostrar todas").setIcon(R.drawable.show_all)
+		menu.add(this.getString(R.string.show_all)).setIcon(R.drawable.show_all)
 		.setOnMenuItemClickListener(new OnMenuItemClickListener()
 		{
 			public boolean onMenuItemClick(MenuItem item)
@@ -392,7 +392,7 @@ public class AppSelectActivity extends Activity implements OnClickListener
 			}
 		});
 
-		menu.add("Sin categoria asignada").setIcon(R.drawable.filter)
+		menu.add(this.getString(R.string.no_category)).setIcon(R.drawable.filter)
 		.setOnMenuItemClickListener(new OnMenuItemClickListener()
 		{
 			public boolean onMenuItemClick(MenuItem item)
@@ -402,7 +402,7 @@ public class AppSelectActivity extends Activity implements OnClickListener
 			}
 		});
 
-		menu.add("Seleccionar todas").setIcon(R.drawable.checkall)
+		menu.add(this.getString(R.string.select_all)).setIcon(R.drawable.checkall)
 		.setOnMenuItemClickListener(new OnMenuItemClickListener()
 		{
 			public boolean onMenuItemClick(MenuItem item)
@@ -412,7 +412,7 @@ public class AppSelectActivity extends Activity implements OnClickListener
 			}
 		});
 
-		menu.add("Deseleccionar todas").setIcon(R.drawable.checknone)
+		menu.add(this.getString(R.string.unselect_all)).setIcon(R.drawable.checknone)
 		.setOnMenuItemClickListener(new OnMenuItemClickListener()
 		{
 			public boolean onMenuItemClick(MenuItem item)
