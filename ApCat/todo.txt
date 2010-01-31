@@ -1,9 +1,9 @@
-eliminar statics
+eliminar statics??
 revisar los todo del codigo
-que es un inflater?
 usar toast cuando hay excepciones
+eliminar la pantalla de espera y todo lo que no se use
+ver el tema de versionado
 
-cambiar pantalla de espera (http://stackoverflow.com/questions/1981156/android-loading-please-wait)
 cambiar icono
 cambiar nombre
 agregar iconos al grupo / modificar aspecto del grupo
@@ -13,9 +13,9 @@ ocultar el reset
 hacer que el programa sea residente asi no tarda tanto en cargar (ver "Saving activity state" en http://developer.android.com/guide/topics/fundamentals.html)
 	remembering expanded/collapsed groups on close
 mejorar los iconos horribles
-cambiar el nombre de "Uncategorized"
 mejorar el funcionamiento de expandir todas, colapsar todas, etc...
 cambiar el AlertDialog de las opciones por un menu (metodo onPostExecute de LauncherActivity)
+
 //hacer que se traduzca todo
 //poder renombrar grupos
 //opcion para mostrar aplicaciones sin grupo asignado
@@ -25,6 +25,7 @@ cambiar el AlertDialog de las opciones por un menu (metodo onPostExecute de Laun
 //agregar al menu de cada app la opcion de remove from category
 //mostrar en el titulo de seleccion de apps la categoria a la que se van a agregar
 //al filtrar, mantener los seleccionados
+//cambiar pantalla de espera (http://stackoverflow.com/questions/1981156/android-loading-please-wait)
 
-
-probar de rotar la pantalla en la parte de apps y apretar cancelar (en el fono de hard)
+probar de rotar la pantalla en la parte de apps y apretar cancelar (en el telefono real)
+revisar problemas cambiando orientacion mientras se cargan los grupos y aplicaciones
