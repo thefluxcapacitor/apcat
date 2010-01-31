@@ -42,6 +42,7 @@ import com.google.android.photostream.UserTask;
 
 import android.app.AlertDialog;
 import android.app.ExpandableListActivity;
+import android.app.ProgressDialog;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -106,13 +107,17 @@ public class LauncherActivity extends ExpandableListActivity implements
 	public String GROUP_UNKNOWN;
 	private int iconSize = -1;
 
+	private ProgressDialog dialog;
+	
 	public void onCreate(Bundle savedInstanceState)
 	{
 		super.onCreate(savedInstanceState);
 
 		GROUP_UNKNOWN = this.getString(R.string.uncategorized);
 		
-		setContentView(R.layout.act_launch);
+		//setContentView(R.layout.act_launch);
+		
+		dialog = ProgressDialog.show(LauncherActivity.this, "", LauncherActivity.this.getString(R.string.msg_loading), true);
 
 		this.inflater = (LayoutInflater) this
 				.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
@@ -515,6 +520,9 @@ public class LauncherActivity extends ExpandableListActivity implements
 	private void refresh()
 	{
 		setListAdapter(null);
+		
+		dialog = ProgressDialog.show(LauncherActivity.this, "", LauncherActivity.this.getString(R.string.msg_loading), true);
+		
 		new ProcessTask().execute();
 	}
 
@@ -848,7 +856,9 @@ public class LauncherActivity extends ExpandableListActivity implements
 					}
 				}
 			});
-
+			
+			dialog.dismiss();
+			dialog = null;
 		}
 
 	}

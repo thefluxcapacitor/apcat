@@ -32,4 +32,5 @@
 <string name="no_category">Sin categoría asignada</string>
 <string name="select_all">Seleccionar todas</string>
 <string name="unselect_all">Deseleccionar todas</string>
+<string name="msg_loading">Cargando. Espere por favor...</string>
 </resources>
