@@ -4,8 +4,8 @@ usar toast cuando hay excepciones
 eliminar la pantalla de espera y todo lo que no se use
 ver el tema de versionado
 
-cambiar icono
-cambiar nombre
+//cambiar icono
+//cambiar nombre
 agregar iconos al grupo / modificar aspecto del grupo
 agrgar iconos a las aplicaciones (ver porqué falla)
 opcion de ocultar categorias 
