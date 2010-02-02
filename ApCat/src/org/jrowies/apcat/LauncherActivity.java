@@ -107,8 +107,6 @@ public class LauncherActivity extends ExpandableListActivity implements
 	public String GROUP_UNKNOWN;
 	private int iconSize = -1;
 
-	private ProgressDialog dialog;
-	
 	public void onCreate(Bundle savedInstanceState)
 	{
 		super.onCreate(savedInstanceState);
@@ -117,8 +115,6 @@ public class LauncherActivity extends ExpandableListActivity implements
 		
 		//setContentView(R.layout.act_launch);
 		
-		dialog = ProgressDialog.show(LauncherActivity.this, "", LauncherActivity.this.getString(R.string.msg_loading), true);
-
 		this.inflater = (LayoutInflater) this
 				.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 
@@ -521,8 +517,6 @@ public class LauncherActivity extends ExpandableListActivity implements
 	{
 		setListAdapter(null);
 		
-		dialog = ProgressDialog.show(LauncherActivity.this, "", LauncherActivity.this.getString(R.string.msg_loading), true);
-		
 		new ProcessTask().execute();
 	}
 
@@ -669,6 +663,13 @@ public class LauncherActivity extends ExpandableListActivity implements
 		}
 
 		public GroupAdapter groupAdapter;
+		private ProgressDialog dialog;
+
+		@Override
+		public void onPreExecute()
+		{
+			dialog = ProgressDialog.show(LauncherActivity.this, "", LauncherActivity.this.getString(R.string.msg_loading), true);
+		}
 
 		@Override
 		public void onPostExecute(GroupAdapter result)
@@ -857,8 +858,11 @@ public class LauncherActivity extends ExpandableListActivity implements
 				}
 			});
 			
-			dialog.dismiss();
-			dialog = null;
+			if (dialog != null)
+			{
+				dialog.dismiss();
+				dialog = null;
+			}
 		}
 
 	}

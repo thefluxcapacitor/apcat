@@ -27,10 +27,10 @@
 	android:paddingRight="15dip"
 	android:paddingBottom="10dip"
 	android:textAppearance="?android:attr/textAppearanceMedium"
-	android:textColor="@color/black"  
 	android:background="@drawable/settings_header_list"
 	/>
 
 	<!--
+	android:textColor="@color/black"
 	style="?android:attr/listSeparatorTextViewStyle"
 	-->
