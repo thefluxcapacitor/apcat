@@ -2,17 +2,19 @@ eliminar statics??
 revisar los todo del codigo
 usar toast cuando hay excepciones
 eliminar la pantalla de espera y todo lo que no se use
-ver el tema de versionado
+//ver el tema de versionado
 
 //cambiar icono
 //cambiar nombre
-agregar iconos al grupo / modificar aspecto del grupo
-agrgar iconos a las aplicaciones (ver porqué falla)
+agregar mensaje de espera al mostrar la activity de seleccion de apps
+agregar iconos al grupo 
+//modificar aspecto del grupo
+//agrgar iconos a las aplicaciones (ver porqué falla)
 opcion de ocultar categorias 
 ocultar el reset
 hacer que el programa sea residente asi no tarda tanto en cargar (ver "Saving activity state" en http://developer.android.com/guide/topics/fundamentals.html)
 	remembering expanded/collapsed groups on close
-mejorar los iconos horribles
+mejorar los iconos horribles de los menu
 mejorar el funcionamiento de expandir todas, colapsar todas, etc...
 cambiar el AlertDialog de las opciones por un menu (metodo onPostExecute de LauncherActivity)
 

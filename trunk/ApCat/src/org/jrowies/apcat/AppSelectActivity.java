@@ -90,24 +90,12 @@ public class AppSelectActivity extends Activity implements OnClickListener
 			PackageInfo pkgInfo = (PackageInfo) chk.getTag();
 			packageSelStates.put(pkgInfo.packageName.toString(), chk.isChecked());
 		}
-//		ScrollView scrollView = (ScrollView) findViewById(R.id.ScrollView01);
-//		TableLayout table = (TableLayout)scrollView.getChildAt(0);
-//		
-//		for (int i = 0 ; i < table.getChildCount() ; i++)
-//		{
-//			View child = table.getChildAt(i);
-//			if (child instanceof CheckBox)
-//			{
-//				((CheckBox)child).setChecked(true);
-//			}
-//		}
 	}
 	
 	private void drawApplications(boolean showUncategorizedOnly)
 	{
 		updatePackageSelStates();
 		
-		//todo: V1
 		ScrollView scrollView = (ScrollView) findViewById(R.id.ScrollView01);
 		
 		scrollView.removeAllViews();
@@ -120,7 +108,7 @@ public class AppSelectActivity extends Activity implements OnClickListener
 		packagesInCategory = new ArrayList<String>();
 		try
 		{
-		//si solo muestro las que no tienen categoria, no es necesario llenar la lista
+			//si solo muestro las que no tienen categoria, no es necesario llenar la lista
 			if (!showUncategorizedOnly) 
 			{
 				LauncherActivity.appdb.getPackagesForCategory(packagesInCategory,
@@ -202,7 +190,6 @@ public class AppSelectActivity extends Activity implements OnClickListener
 					chkBox.setChecked(inCategory);
 				}
 	
-				//todo: 
 				if (pkgInfo.icon != null)
 				{
 					chkBox.setCompoundDrawablesWithIntrinsicBounds(null, null,
@@ -211,8 +198,7 @@ public class AppSelectActivity extends Activity implements OnClickListener
 				else
 				{
 					chkBox.setCompoundDrawablesWithIntrinsicBounds(null, null, null, null);
-					//todo: ver porque esto en el telefono real falla !!!! 
-					//new ThumbTask().execute(pkgInfo, chkBox);
+					new ThumbTask().execute(pkgInfo, chkBox);
 				}
 	
 				//chkBox.setCompoundDrawables(null, null, pkgInfo.icon, null);
@@ -238,7 +224,6 @@ public class AppSelectActivity extends Activity implements OnClickListener
 			}
 		}
 		scrollView.addView(table);
-		//todo: fin V1
 	}
 	
 	@Override
@@ -263,95 +248,6 @@ public class AppSelectActivity extends Activity implements OnClickListener
 		
 		drawApplications(false);
 	}
-
-	//todo: V2
-	/*
-	public void onStart() 
-	{
-	super.onStart();
-	new ProcessTask().execute(this);
-	}
-	
-	private class ProcessTask extends UserTask<AppSelectActivity, Void, TableLayout> 
-	{
-		private ScrollView scrollView;
-	public TableLayout doInBackground(AppSelectActivity... params) 
-	{
-	      scrollView = (ScrollView)findViewById(R.id.ScrollView01);
-	      
-	      btnAceptar = (TextView)findViewById(R.id.Button01);
-	      btnAceptar.setOnClickListener(params[0]);
-
-	      btnCancelar = (TextView)findViewById(R.id.Button02);
-	      btnCancelar.setOnClickListener(params[0]);
-	      
-	      TableLayout table = new TableLayout(params[0]);
-	      CheckBox chkBox;
-	      
-	      chkList = new ArrayList<CheckBox>();
-	      
-	      packagesInCategory = new ArrayList<String>();
-	      try
-	      {
-	      	LauncherActivity.appdb.getPackagesForCategory(packagesInCategory, groupName);
-	      }
-	      catch (Exception e)
-	      {
-	      	Log.e(LauncherActivity.TAG, "", e);
-	      }
-	      
-	      List<PackageInfo> pkgInfoList = new ArrayList<PackageInfo>();
-		
-		for(ResolveInfo info : LauncherActivity.apps) {
-
-	      	CharSequence packageDescription = info.loadLabel(LauncherActivity.pm);
-	      	CharSequence packageName = info.activityInfo.packageName;
-			if(packageDescription == null)
-				packageName = packageDescription;
-
-			PackageInfo pkgInfo = new PackageInfo();
-			pkgInfo.packageDescription = packageDescription;
-			pkgInfo.packageName = packageName;
-			pkgInfo.resolveInfo = info;
-
-			pkgInfoList.add(pkgInfo);
-		}
-
-		final Collator collator = Collator.getInstance();
-		Collections.sort(pkgInfoList, new Comparator<PackageInfo>() {
-			public int compare(PackageInfo object1, PackageInfo object2) {
-				return collator.compare(object1.packageDescription, object2.packageDescription);
-			}
-		});
-
-		for (PackageInfo pkgInfo : pkgInfoList)
-		{
-			chkBox = new CheckBox(params[0]);
-	        chkBox.setText(pkgInfo.packageDescription);
-	        chkBox.setTag(pkgInfo);
-	        chkBox.setChecked(packagesInCategory.contains(pkgInfo.packageName));
-	        
-	        //todo new ThumbTask().execute(pkgInfo, chkBox);
-	        
-	        //chkBox.setCompoundDrawables(null, null, pkgInfo.icon, null);
-	        table.addView(chkBox);
-	        chkList.add(chkBox);
-		}
-	      
-	      
-	      return table;
-	}
-
-	@Override
-	public void end(TableLayout result) 
-	{
-		super.end(result);
-		scrollView.addView(result);
-	}
-
-	}
-	 */
-	//todo: fin V2
 	
 	private class ThumbTask extends UserTask<Object, Void, Object[]>
 	{

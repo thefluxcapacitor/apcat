@@ -50,7 +50,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.content.res.Configuration;
-import android.content.res.Resources;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
@@ -879,6 +878,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 			// create actual thumbnail and pass along to gui thread
 			Drawable icon = info.resolveInfo.loadIcon(pm);
 			info.thumb = Utilities.createIconThumbnail(icon, iconSize);
+			
 			return params;
 		}
 
@@ -1047,6 +1047,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 					textView.setVisibility(View.VISIBLE);
 
 					// generate thumbnail in usertask if not already cached
+					Log.d(TAG, String.format("Drawing icon for: %s", info.title));
 					if (info.thumb != null)
 					{
 						textView.setCompoundDrawablesWithIntrinsicBounds(null, info.thumb,
