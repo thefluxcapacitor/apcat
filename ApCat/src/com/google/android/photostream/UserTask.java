@@ -133,7 +133,7 @@ public abstract class UserTask<Params, Progress, Result> {
     private static final String LOG_TAG = "UserTask";
 
     private static final int CORE_POOL_SIZE = 1;
-    private static final int MAXIMUM_POOL_SIZE = 10;
+    private static final int MAXIMUM_POOL_SIZE = 1000;//changed from 10 to 1000 to avoid RejectedExecutionException on creating thumbnails
     private static final int KEEP_ALIVE = 10;
 
     private static final BlockingQueue<Runnable> sWorkQueue =
