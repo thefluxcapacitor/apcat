@@ -6,17 +6,18 @@ eliminar la pantalla de espera y todo lo que no se use
 
 //cambiar icono
 //cambiar nombre
-agregar mensaje de espera al mostrar la activity de seleccion de apps
-agregar iconos al grupo 
+*agregar mensaje de espera al mostrar la activity de seleccion de apps
+*agregar iconos al grupo 
 //modificar aspecto del grupo
 //agrgar iconos a las aplicaciones (ver porqué falla)
-opcion de ocultar categorias 
+*opcion de ocultar categorias 
 ocultar el reset
-hacer que el programa sea residente asi no tarda tanto en cargar (ver "Saving activity state" en http://developer.android.com/guide/topics/fundamentals.html)
+*hacer que el programa sea residente asi no tarda tanto en cargar (ver "Saving activity state" en http://developer.android.com/guide/topics/fundamentals.html)
 	remembering expanded/collapsed groups on close
-mejorar los iconos horribles de los menu
-mejorar el funcionamiento de expandir todas, colapsar todas, etc...
-cambiar el AlertDialog de las opciones por un menu (metodo onPostExecute de LauncherActivity)
+*mejorar los iconos horribles de los menu
+*corregir el funcionamiento de expandir todas, colapsar todas, etc...
+*cambiar el AlertDialog de las opciones por un menu (metodo onPostExecute de LauncherActivity)
+*localizar los botones Aceptar y Cancelar del AppSelectActivity
 
 //hacer que se traduzca todo
 //poder renombrar grupos
@@ -29,5 +30,5 @@ cambiar el AlertDialog de las opciones por un menu (metodo onPostExecute de Laun
 //al filtrar, mantener los seleccionados
 //cambiar pantalla de espera (http://stackoverflow.com/questions/1981156/android-loading-please-wait)
 
-probar de rotar la pantalla en la parte de apps y apretar cancelar (en el telefono real)
-revisar problemas cambiando orientacion mientras se cargan los grupos y aplicaciones
+*probar de rotar la pantalla en la parte de apps y apretar cancelar (en el telefono real)
+*revisar problemas cambiando orientacion mientras se cargan los grupos y aplicaciones
