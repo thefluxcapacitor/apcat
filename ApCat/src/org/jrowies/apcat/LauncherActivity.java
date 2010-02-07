@@ -515,7 +515,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 
 			for (EntryInfo entry : passone)
 			{
-				String packageName = entry.resolveInfo.activityInfo.packageName;
+				String packageName = entry.resolveInfo.activityInfo.name;
 				try
 				{
 					String categoryName = appdb.getCategoryForPackage(packageName);
@@ -660,6 +660,9 @@ public class LauncherActivity extends ExpandableListActivity implements
 													{
 														if (radioSelectApp.isChecked())
 														{
+//															AppSelectActivity.dialog = ProgressDialog.show(LauncherActivity.this, "", 
+//																	LauncherActivity.this.getString(R.string.msg_loading), true);
+															
 															Intent intent = new Intent();
 															
 															intent.setClassName(AppSelectActivity.class.getPackage().getName(),
@@ -1004,7 +1007,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 		EntryInfo info = (EntryInfo) v.getTag();
 
 		final String packageName = info.resolveInfo.activityInfo.applicationInfo.packageName;
-
+		
 		menu.setHeaderTitle(info.title);
 
 		Intent detailsIntent = new Intent();
@@ -1020,7 +1023,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 		
 		try
 		{
-			final String packageName2 = info.resolveInfo.activityInfo.packageName;
+			final String packageName2 = info.resolveInfo.activityInfo.name;
 			final String categoryName = appdb.getCategoryForPackage(packageName2);
 			if (categoryName != null && !categoryName.equals(""))
 			{
@@ -1030,6 +1033,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 					public boolean onMenuItemClick(MenuItem item)
 					{
 						appdb.removeFromCategory(categoryName, packageName2);
+						refresh();
 						return true;
 					}
 				});

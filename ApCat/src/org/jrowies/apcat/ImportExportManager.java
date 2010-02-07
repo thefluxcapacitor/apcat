@@ -38,6 +38,7 @@ public class ImportExportManager
 	private final String NAMEKEY = "name";
 	private final String TAG = ImportExportManager.class.toString();
 	private final String SETTINGS_FILE = "ApCatSettings.txt"; 
+	private final String SETTINGS_FOLDER = "ApCatSettings";
 	
 	private Map<Category, List<String>> data;
 	
@@ -56,17 +57,10 @@ public class ImportExportManager
   	data.get(category).add(packageName);
   }
   
-  private String fileName = null; 
+  private String fileName = null;
   public String getFileName()
   {
-  	if (fileName != null)
-  		return fileName;
-  	else
-  	{
-  		File sd = Environment.getExternalStorageDirectory();
-  		fileName = String.format("%s/%s", sd.getAbsolutePath(), SETTINGS_FILE);
-  		return fileName;
-  	}
+		return fileName;
   }
   
   public boolean Export()
@@ -112,10 +106,19 @@ public class ImportExportManager
   	
 		try
 		{
-			FileWriter f = new FileWriter(getFileName(), false);
+			String fileNameLocal;
+  		File path = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + File.separator + SETTINGS_FOLDER);
+  		if (!path.isDirectory()) 
+  			path.mkdirs();
+  		
+  		fileNameLocal = path.getPath() + File.separator + SETTINGS_FILE;
+  		
+			FileWriter f = new FileWriter(fileNameLocal, false);
 			f.write(rootData.toString(), 0, rootData.toString().length());
 			f.flush();
 			f.close();
+
+  		this.fileName = fileNameLocal;
 			
 			return true;
 		}
@@ -148,7 +151,18 @@ public class ImportExportManager
   	
 		try
 		{
-			FileReader f = new FileReader(getFileName());
+			String fileNameLocal;
+  		File path = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + 
+  				File.separator + SETTINGS_FOLDER + File.separator + SETTINGS_FILE);
+  		if (!path.isFile()) 
+  		{
+    		path = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + 
+    				File.separator + SETTINGS_FILE); //backward compatibility
+  		}
+  		
+  		fileNameLocal = path.getPath();
+			
+			FileReader f = new FileReader(fileNameLocal);
 			BufferedReader br = new BufferedReader(f);
 			String s, target = "";
 			while((s = br.readLine()) != null) 
@@ -157,6 +171,7 @@ public class ImportExportManager
 			} 
 			f.close();
 			
+			this.fileName = fileNameLocal;
 			
 			if (!target.equals(""))
 			{
@@ -208,7 +223,18 @@ public class ImportExportManager
 			JSONArray packages = data.getJSONArray(key);
 			for (int i = 0 ; i < packages.length() ; i++)
 			{
-				findAndAddPackage(packagesInCategory, packages.get(i).toString());
+				for (Iterator<ResolveInfo> appIterator = appsList.iterator(); appIterator.hasNext(); )
+				{
+					ResolveInfo rInfo = appIterator.next();
+					String name = rInfo.activityInfo.packageName;
+					String correctName = rInfo.activityInfo.name;
+
+					if (name.equals(packages.get(i).toString()))
+					{
+						addPackage(packagesInCategory, rInfo, correctName);	
+						break;
+					}
+				}
 			}
 			
 			categories.put(cat, packagesInCategory);
@@ -225,41 +251,43 @@ public class ImportExportManager
 		{
 			JSONObject categoryData = categoriesArray.getJSONObject(i);
 			
-			String name = categoryData.getString(NAMEKEY);
-			boolean visible = categoryData.getBoolean(VISIBLEKEY);
-			Category cat = new Category(name, visible);
+			String nameKey = categoryData.getString(NAMEKEY);
+			boolean visibleKey = categoryData.getBoolean(VISIBLEKEY);
+			Category cat = new Category(nameKey, visibleKey);
 			
 			JSONArray packagesArray = categoryData.getJSONArray(PACKAGESKEY);
 			List<PackageInfo> packagesInCategory = new ArrayList<PackageInfo>();
 			for (int j = 0 ; j < packagesArray.length() ; j++)
 			{
-				findAndAddPackage(packagesInCategory, packagesArray.getString(j));
+				for (Iterator<ResolveInfo> appIterator = appsList.iterator(); appIterator.hasNext(); )
+				{
+					ResolveInfo rInfo = appIterator.next();
+					String name = rInfo.activityInfo.name;
+
+					if (name.equals(packagesArray.getString(j)))
+					{
+						addPackage(packagesInCategory, rInfo, name);	
+						break;
+					}
+				}
+				
 			}
 			
 			categories.put(cat, packagesInCategory);
 		}
 	}
-	
-	private void findAndAddPackage(List<PackageInfo> packagesInCategory, String packageName)
+
+	private void addPackage(List<PackageInfo> packagesInCategory,
+			ResolveInfo rInfo, String name)
 	{
-		for (Iterator<ResolveInfo> appIterator = appsList.iterator(); appIterator.hasNext(); )
-		{
-			ResolveInfo rInfo = appIterator.next();
-			String name = rInfo.activityInfo.packageName;
+		String desc = rInfo.loadLabel(pm).toString();
+		if (desc == null)
+			desc = name;
 
-			if (name.equals(packageName))
-			{
-				String desc = rInfo.loadLabel(pm).toString();
-				if (desc == null)
-					desc = name;
-
-				PackageInfo packageInfo = new PackageInfo();
-				packageInfo.packageName = name;
-				packageInfo.packageDescription = desc;
-				packagesInCategory.add(packageInfo);	
-				
-				break;
-			}
-		}
+		PackageInfo packageInfo = new PackageInfo();
+		packageInfo.packageName = name;
+		packageInfo.packageDescription = desc;
+		packagesInCategory.add(packageInfo);
 	}
+	
 }

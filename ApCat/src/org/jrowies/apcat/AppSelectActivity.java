@@ -29,6 +29,7 @@ import org.jsharkey.grouphome.Utilities;
 import com.google.android.photostream.UserTask;
 
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.pm.ResolveInfo;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
@@ -93,138 +94,315 @@ public class AppSelectActivity extends Activity implements OnClickListener
 		}
 	}
 	
+//	private class DrawApplicationsTask extends UserTask<Boolean, Void, Void>
+//	{
+//		public Void doInBackground(Boolean... params)
+//		{
+//			drawApplications(params[0]);
+//			return null;
+//		}
+//		
+//		private void drawApplications(boolean showUncategorizedOnly)
+//		{
+//			//dialog = ProgressDialog.show(this, "", this.getString(R.string.msg_loading), true);
+//			
+//			try
+//			{
+//				updatePackageSelStates();
+//				
+//				ScrollView scrollView = (ScrollView) findViewById(R.id.ScrollView01);
+//				
+//				scrollView.removeAllViews();
+//
+//				TableLayout table = new TableLayout(AppSelectActivity.this);
+//				CheckBox chkBox;
+//
+//				chkList = new ArrayList<CheckBox>();
+//
+//				packagesInCategory = new ArrayList<String>();
+//				try
+//				{
+//					//si solo muestro las que no tienen categoria, no es necesario llenar la lista
+//					if (!showUncategorizedOnly) 
+//					{
+//						LauncherActivity.appdb.getPackagesForCategory(packagesInCategory,
+//							groupName);
+//					}
+//				}
+//				catch (Exception e)
+//				{
+//					Log.e(LauncherActivity.TAG, "", e);
+//				}
+//
+//				List<PackageInfo> pkgInfoList = new ArrayList<PackageInfo>();
+//
+//				for (ResolveInfo info : LauncherActivity.apps)
+//				{
+//
+//					CharSequence packageDescription = info.loadLabel(LauncherActivity.pm);
+//					CharSequence packageName = info.activityInfo.name;
+//					if (packageDescription == null)
+//						packageName = packageDescription;
+//
+//					PackageInfo pkgInfo = new PackageInfo();
+//					pkgInfo.packageDescription = packageDescription;
+//					pkgInfo.packageName = packageName;
+//					pkgInfo.resolveInfo = info;
+//
+//					pkgInfoList.add(pkgInfo);
+//				}
+//
+//				final Collator collator = Collator.getInstance();
+//				Collections.sort(pkgInfoList, new Comparator<PackageInfo>()
+//				{
+//					public int compare(PackageInfo object1, PackageInfo object2)
+//					{
+//						return collator.compare(object1.packageDescription,
+//								object2.packageDescription);
+//					}
+//				});
+//
+//				boolean firstPass = false;
+//				if (packageSelStates == null)
+//				{
+//					packageSelStates = new HashMap<String, Boolean>();
+//					firstPass = true;
+//				}
+//
+//				for (PackageInfo pkgInfo : pkgInfoList)
+//				{
+//					String currentCategoryStr = null;
+//					try
+//					{
+//						currentCategoryStr = LauncherActivity.appdb.getCategoryForPackage(pkgInfo.packageName.toString());
+//					}
+//					catch (Exception e)
+//					{
+//						Log.e(LauncherActivity.TAG, "", e);
+//					}
+//					
+//					boolean addApp = !showUncategorizedOnly || (currentCategoryStr == null || currentCategoryStr.equals(""));
+//					
+//					if (addApp)
+//					{
+//						chkBox = new CheckBox(AppSelectActivity.this);
+//						chkBox.setText(pkgInfo.packageDescription);
+//						chkBox.setTag(pkgInfo);
+//						
+//						if (!firstPass)
+//						{
+//							//si entra en drawApplications porque se esta aplicando un filtro, firstPass es false 
+//							//entonces mantengo el checked segun la informacion de packageSelStates
+//							chkBox.setChecked(packageSelStates.get(pkgInfo.packageName));
+//						}
+//						else
+//						{
+//							Boolean inCategory = packagesInCategory.contains(pkgInfo.packageName);
+//							packageSelStates.put(pkgInfo.packageName.toString(), inCategory);
+//							
+//							//pongo el checked solo si el package pertenece a la categoria
+//							chkBox.setChecked(inCategory);
+//						}
+//
+//						if (pkgInfo.icon != null)
+//						{
+//							chkBox.setCompoundDrawablesWithIntrinsicBounds(null, null,
+//									pkgInfo.icon, null);
+//						}
+//						else
+//						{
+//							chkBox.setCompoundDrawablesWithIntrinsicBounds(null, null, null, null);
+//							new ThumbTask().execute(pkgInfo, chkBox);
+//						}
+//
+//						//chkBox.setCompoundDrawables(null, null, pkgInfo.icon, null);
+//						table.addView(chkBox);
+//						
+//						if (currentCategoryStr != null && !currentCategoryStr.equals(""))
+//						{
+//							TextView currentCategory = new TextView(AppSelectActivity.this);
+//							//currentCategory.setBackgroundColor(Color.BLUE);
+//							currentCategory.setText(currentCategoryStr + "   ");//todo: hacerlo mas "elegante"
+//							currentCategory.setGravity(Gravity.RIGHT);
+//							
+//							/*LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
+//				          LinearLayout.LayoutParams.FILL_PARENT,
+//				          LinearLayout.LayoutParams.WRAP_CONTENT);
+//									layoutParams.setMargins(0, 0, 50, 0);
+//							currentCategory.setLayoutParams(layoutParams);*/
+//							
+//							table.addView(currentCategory);
+//						}
+//						
+//						chkList.add(chkBox);
+//					}
+//				}
+//				scrollView.addView(table);
+//			}
+//			finally
+//			{
+//				if (dialog != null)
+//				{
+//					dialog.dismiss();
+//					dialog = null;
+//				}
+//			}
+//		}
+//		
+//	}
+//  
+//	private void drawApplications(boolean showUncategorizedOnly)
+//	{
+//		new DrawApplicationsTask().execute(showUncategorizedOnly);
+//	}
+
+//	public static ProgressDialog dialog = null;
+	
 	private void drawApplications(boolean showUncategorizedOnly)
 	{
-		updatePackageSelStates();
+		//dialog = ProgressDialog.show(this, "", this.getString(R.string.msg_loading), true);
 		
-		ScrollView scrollView = (ScrollView) findViewById(R.id.ScrollView01);
-		
-		scrollView.removeAllViews();
-
-		TableLayout table = new TableLayout(this);
-		CheckBox chkBox;
-
-		chkList = new ArrayList<CheckBox>();
-
-		packagesInCategory = new ArrayList<String>();
 		try
 		{
-			//si solo muestro las que no tienen categoria, no es necesario llenar la lista
-			if (!showUncategorizedOnly) 
-			{
-				LauncherActivity.appdb.getPackagesForCategory(packagesInCategory,
-					groupName);
-			}
-		}
-		catch (Exception e)
-		{
-			Log.e(LauncherActivity.TAG, "", e);
-		}
+			updatePackageSelStates();
+			
+			ScrollView scrollView = (ScrollView) findViewById(R.id.ScrollView01);
+			
+			scrollView.removeAllViews();
 
-		List<PackageInfo> pkgInfoList = new ArrayList<PackageInfo>();
+			TableLayout table = new TableLayout(this);
+			CheckBox chkBox;
 
-		for (ResolveInfo info : LauncherActivity.apps)
-		{
+			chkList = new ArrayList<CheckBox>();
 
-			CharSequence packageDescription = info.loadLabel(LauncherActivity.pm);
-			CharSequence packageName = info.activityInfo.packageName;
-			if (packageDescription == null)
-				packageName = packageDescription;
-
-			PackageInfo pkgInfo = new PackageInfo();
-			pkgInfo.packageDescription = packageDescription;
-			pkgInfo.packageName = packageName;
-			pkgInfo.resolveInfo = info;
-
-			pkgInfoList.add(pkgInfo);
-		}
-
-		final Collator collator = Collator.getInstance();
-		Collections.sort(pkgInfoList, new Comparator<PackageInfo>()
-		{
-			public int compare(PackageInfo object1, PackageInfo object2)
-			{
-				return collator.compare(object1.packageDescription,
-						object2.packageDescription);
-			}
-		});
-
-		boolean firstPass = false;
-		if (packageSelStates == null)
-		{
-			packageSelStates = new HashMap<String, Boolean>();
-			firstPass = true;
-		}
-
-		for (PackageInfo pkgInfo : pkgInfoList)
-		{
-			String currentCategoryStr = null;
+			packagesInCategory = new ArrayList<String>();
 			try
 			{
-				currentCategoryStr = LauncherActivity.appdb.getCategoryForPackage(pkgInfo.packageName.toString());
+				//si solo muestro las que no tienen categoria, no es necesario llenar la lista
+				if (!showUncategorizedOnly) 
+				{
+					LauncherActivity.appdb.getPackagesForCategory(packagesInCategory,
+						groupName);
+				}
 			}
 			catch (Exception e)
 			{
 				Log.e(LauncherActivity.TAG, "", e);
 			}
-			
-			boolean addApp = !showUncategorizedOnly || (currentCategoryStr == null || currentCategoryStr.equals(""));
-			
-			if (addApp)
+
+			List<PackageInfo> pkgInfoList = new ArrayList<PackageInfo>();
+
+			for (ResolveInfo info : LauncherActivity.apps)
 			{
-				chkBox = new CheckBox(this);
-				chkBox.setText(pkgInfo.packageDescription);
-				chkBox.setTag(pkgInfo);
-				
-				if (!firstPass)
-				{
-					//si entra en drawApplications porque se esta aplicando un filtro, firstPass es false 
-					//entonces mantengo el checked segun la informacion de packageSelStates
-					chkBox.setChecked(packageSelStates.get(pkgInfo.packageName));
-				}
-				else
-				{
-					Boolean inCategory = packagesInCategory.contains(pkgInfo.packageName);
-					packageSelStates.put(pkgInfo.packageName.toString(), inCategory);
-					
-					//pongo el checked solo si el package pertenece a la categoria
-					chkBox.setChecked(inCategory);
-				}
-	
-				if (pkgInfo.icon != null)
-				{
-					chkBox.setCompoundDrawablesWithIntrinsicBounds(null, null,
-							pkgInfo.icon, null);
-				}
-				else
-				{
-					chkBox.setCompoundDrawablesWithIntrinsicBounds(null, null, null, null);
-					new ThumbTask().execute(pkgInfo, chkBox);
-				}
-	
-				//chkBox.setCompoundDrawables(null, null, pkgInfo.icon, null);
-				table.addView(chkBox);
-				
-				if (currentCategoryStr != null && !currentCategoryStr.equals(""))
-				{
-					TextView currentCategory = new TextView(this);
-					//currentCategory.setBackgroundColor(Color.BLUE);
-					currentCategory.setText(currentCategoryStr + "   ");//todo: hacerlo mas "elegante"
-					currentCategory.setGravity(Gravity.RIGHT);
-					
-					/*LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
-	            LinearLayout.LayoutParams.FILL_PARENT,
-	            LinearLayout.LayoutParams.WRAP_CONTENT);
-							layoutParams.setMargins(0, 0, 50, 0);
-					currentCategory.setLayoutParams(layoutParams);*/
-					
-					table.addView(currentCategory);
-				}
-				
-				chkList.add(chkBox);
+
+				CharSequence packageDescription = info.loadLabel(LauncherActivity.pm);
+				CharSequence packageName = info.activityInfo.name;
+				if (packageDescription == null)
+					packageName = packageDescription;
+
+				PackageInfo pkgInfo = new PackageInfo();
+				pkgInfo.packageDescription = packageDescription;
+				pkgInfo.packageName = packageName;
+				pkgInfo.resolveInfo = info;
+
+				pkgInfoList.add(pkgInfo);
 			}
+
+			final Collator collator = Collator.getInstance();
+			Collections.sort(pkgInfoList, new Comparator<PackageInfo>()
+			{
+				public int compare(PackageInfo object1, PackageInfo object2)
+				{
+					return collator.compare(object1.packageDescription,
+							object2.packageDescription);
+				}
+			});
+
+			boolean firstPass = false;
+			if (packageSelStates == null)
+			{
+				packageSelStates = new HashMap<String, Boolean>();
+				firstPass = true;
+			}
+
+			for (PackageInfo pkgInfo : pkgInfoList)
+			{
+				String currentCategoryStr = null;
+				try
+				{
+					currentCategoryStr = LauncherActivity.appdb.getCategoryForPackage(pkgInfo.packageName.toString());
+				}
+				catch (Exception e)
+				{
+					Log.e(LauncherActivity.TAG, "", e);
+				}
+				
+				boolean addApp = !showUncategorizedOnly || (currentCategoryStr == null || currentCategoryStr.equals(""));
+				
+				if (addApp)
+				{
+					chkBox = new CheckBox(this);
+					chkBox.setText(pkgInfo.packageDescription);
+					chkBox.setTag(pkgInfo);
+					
+					if (!firstPass)
+					{
+						//si entra en drawApplications porque se esta aplicando un filtro, firstPass es false 
+						//entonces mantengo el checked segun la informacion de packageSelStates
+						chkBox.setChecked(packageSelStates.get(pkgInfo.packageName));
+					}
+					else
+					{
+						Boolean inCategory = packagesInCategory.contains(pkgInfo.packageName);
+						packageSelStates.put(pkgInfo.packageName.toString(), inCategory);
+						
+						//pongo el checked solo si el package pertenece a la categoria
+						chkBox.setChecked(inCategory);
+					}
+
+					if (pkgInfo.icon != null)
+					{
+						chkBox.setCompoundDrawablesWithIntrinsicBounds(null, null,
+								pkgInfo.icon, null);
+					}
+					else
+					{
+						chkBox.setCompoundDrawablesWithIntrinsicBounds(null, null, null, null);
+						new ThumbTask().execute(pkgInfo, chkBox);
+					}
+
+					//chkBox.setCompoundDrawables(null, null, pkgInfo.icon, null);
+					table.addView(chkBox);
+					
+					if (currentCategoryStr != null && !currentCategoryStr.equals(""))
+					{
+						TextView currentCategory = new TextView(this);
+						//currentCategory.setBackgroundColor(Color.BLUE);
+						currentCategory.setText(currentCategoryStr + "   ");//todo: hacerlo mas "elegante"
+						currentCategory.setGravity(Gravity.RIGHT);
+						
+						/*LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
+			          LinearLayout.LayoutParams.FILL_PARENT,
+			          LinearLayout.LayoutParams.WRAP_CONTENT);
+								layoutParams.setMargins(0, 0, 50, 0);
+						currentCategory.setLayoutParams(layoutParams);*/
+						
+						table.addView(currentCategory);
+					}
+					
+					chkList.add(chkBox);
+				}
+			}
+			scrollView.addView(table);
 		}
-		scrollView.addView(table);
+		finally
+		{
+//			if (dialog != null)
+//			{
+//				dialog.dismiss();
+//				dialog = null;
+//			}
+		}
 	}
 	
 	@Override
