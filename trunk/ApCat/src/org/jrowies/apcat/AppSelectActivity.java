@@ -39,6 +39,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.MenuItem.OnMenuItemClickListener;
 import android.view.View.OnClickListener;
+import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.ScrollView;
 import android.widget.TableLayout;
@@ -55,8 +56,8 @@ public class AppSelectActivity extends Activity implements OnClickListener
 		Drawable icon;
 	}
 
-	private TextView btnAceptar;
-	private TextView btnCancelar;
+	private Button acceptButton;
+	private Button cancelButton;
 
 	private String groupName;
 
@@ -160,7 +161,7 @@ public class AppSelectActivity extends Activity implements OnClickListener
 			String currentCategoryStr = null;
 			try
 			{
-				currentCategoryStr = LauncherActivity.appdb.getCategory(pkgInfo.packageName.toString());
+				currentCategoryStr = LauncherActivity.appdb.getCategoryForPackage(pkgInfo.packageName.toString());
 			}
 			catch (Exception e)
 			{
@@ -233,18 +234,20 @@ public class AppSelectActivity extends Activity implements OnClickListener
 
 		groupName = this.getIntent().getExtras().getString(groupNameIntentExtra);
 
-		setContentView(R.layout.app_select);
+		setContentView(R.layout.scroll_list);
 		
 		TextView titulo = (TextView) findViewById(R.id.TextView01);
 		titulo.setText(String.format(this.getString(R.string.select_applications_of), groupName));
 
 		iconSize = (int) getResources().getDimension(android.R.dimen.app_icon_size);
 
-		btnAceptar = (TextView) findViewById(R.id.Button01);
-		btnAceptar.setOnClickListener(this);
+		acceptButton = (Button) findViewById(R.id.Button01);
+		acceptButton.setText(this.getString(R.string.ok));
+		acceptButton.setOnClickListener(this);
 
-		btnCancelar = (TextView) findViewById(R.id.Button02);
-		btnCancelar.setOnClickListener(this);
+		cancelButton = (Button) findViewById(R.id.Button02);
+		cancelButton.setText(this.getString(R.string.cancel));
+		cancelButton.setOnClickListener(this);
 		
 		drawApplications(false);
 	}
@@ -323,7 +326,7 @@ public class AppSelectActivity extends Activity implements OnClickListener
 	
 	public void onClick(View v)
 	{
-		if (v.equals(btnAceptar))
+		if (v.equals(acceptButton))
 		{
 			for (CheckBox chk : chkList)
 			{
@@ -347,7 +350,7 @@ public class AppSelectActivity extends Activity implements OnClickListener
 			this.finish();
 
 		}
-		else if (v.equals(btnCancelar))
+		else if (v.equals(cancelButton))
 		{
 			this.finish();
 		}

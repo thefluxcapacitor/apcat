@@ -19,26 +19,16 @@
 
 package org.jrowies.apcat;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 import org.jsharkey.grouphome.Utilities;
-import org.json.JSONArray;
-import org.json.JSONObject;
-import com.google.android.photostream.UserTask;
 
 import android.app.AlertDialog;
 import android.app.ExpandableListActivity;
@@ -53,7 +43,6 @@ import android.content.res.Configuration;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.Gravity;
@@ -76,14 +65,13 @@ import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.photostream.UserTask;
+
 public class LauncherActivity extends ExpandableListActivity implements
 		OnCreateContextMenuListener, OnClickListener
 {
-	
 	public static final String TAG = LauncherActivity.class.toString();
 	
-	public static final String SETTINGS_FILE = "ApCatSettings.txt"; //todo: cambiar nombre?
-
 	private static final int ACTIVITY_CREATE = 0;
 
 	class EntryInfo
@@ -93,12 +81,6 @@ public class LauncherActivity extends ExpandableListActivity implements
 		Drawable thumb;
 	}
 
-	public class PackageInfo
-	{
-		String packageName;
-		String packageDescription;
-	}
-	
 	private LayoutInflater inflater = null;
 	public static PackageManager pm = null;
 	public static AppDatabase appdb = null;
@@ -191,7 +173,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 											d.dismiss();
 											try
 											{
-												appdb.addCategory(valor);
+												appdb.addCategory(new Category(valor));
 												refresh();
 											}
 											catch (Exception e)
@@ -278,6 +260,18 @@ public class LauncherActivity extends ExpandableListActivity implements
 					}
 				});
 
+		menu.add(LauncherActivity.this.getString(R.string.set_visible_cat))
+		.setIcon(R.drawable.filter)
+		.setOnMenuItemClickListener(
+				new OnMenuItemClickListener()
+				{
+					public boolean onMenuItemClick(MenuItem item)
+					{
+						seleccionarCategorias();
+						return true;
+					}
+				});
+		
 		menu.add(LauncherActivity.this.getString(R.string.reset))
 		.setIcon(R.drawable.reset)
 		.setOnMenuItemClickListener(
@@ -293,6 +287,16 @@ public class LauncherActivity extends ExpandableListActivity implements
 		return true;
 	}
 
+	private void seleccionarCategorias()
+	{
+		Intent intent = new Intent();
+		
+		intent.setClassName(CategorySelectActivity.class.getPackage().getName(),
+				CategorySelectActivity.class.getName());
+		
+		startActivityForResult(intent, ACTIVITY_CREATE);
+	}
+	
 	private void reset()
 	{
 		new AlertDialog.Builder(LauncherActivity.this)
@@ -306,8 +310,8 @@ public class LauncherActivity extends ExpandableListActivity implements
 				{
 					d.dismiss();
 					
-					appdb.deleteAllMappings();
-					appdb.onUpgrade(appdb.getReadableDatabase(), 0, 1);
+//					appdb.deleteAllMappings();
+					appdb.recreateDataBase();
 					setListAdapter(null);
 					new ProcessTask().execute();
 				}
@@ -330,7 +334,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 						
 						List<String> packagesInCategory = new ArrayList<String>();
 
-						List<String> categories = new ArrayList<String>();
+						List<Category> categories = new ArrayList<Category>();
 						try
 						{
 							appdb.getCategories(categories);
@@ -340,62 +344,40 @@ public class LauncherActivity extends ExpandableListActivity implements
 							Log.e(TAG, "", e);
 						}
 
-						JSONObject data = new JSONObject();
+						ImportExportManager manager = new ImportExportManager();
 
-						for (String cat : categories)
+						for (Category cat : categories)
 						{
 							try
 							{
 								packagesInCategory.clear();
-								appdb.getPackagesForCategory(packagesInCategory, cat);
+								appdb.getPackagesForCategory(packagesInCategory, cat.getName());
 							}
 							catch (Exception e)
 							{
 								Log.e(TAG, "", e);
 							}
 
-							JSONArray appArray = new JSONArray();
+							manager.addCategory(cat);
 							for (String pkg : packagesInCategory)
-								appArray.put(pkg);
-
-							try
-							{
-								data.put(cat, appArray);
-							}
-							catch (Exception e)
-							{
-								Log.e(TAG, "", e);
-							}
+								manager.addPackageToCategory(cat, pkg);
 						}
 
-						File sd = Environment.getExternalStorageDirectory();
+						boolean ok = manager.Export();
 						
-						
-						String fileName = String.format("%s/%s", sd.getAbsolutePath(), SETTINGS_FILE);
-						try
+						if (ok)
 						{
-							FileWriter f = new FileWriter(fileName, false);
-							f.write(data.toString(), 0, data.toString().length());
-							f.flush();
-							f.close();
-							
 							new AlertDialog.Builder(LauncherActivity.this)
-								.setMessage(String.format(LauncherActivity.this.getString(R.string.msg_data_exported), fileName))
+								.setMessage(String.format(LauncherActivity.this.getString(R.string.msg_data_exported), manager.getFileName()))
 								.setPositiveButton(LauncherActivity.this.getString(R.string.ok), null)
 								.create().show();
-							
 						}
-						catch (FileNotFoundException e)
+						else
 						{
-							Log.e(TAG, "", e);
-						}
-						catch (IOException e)
-						{
-							Log.e(TAG, "", e);
-						}
-						catch (Exception e)
-						{
-							Log.e(TAG, "", e);
+							new AlertDialog.Builder(LauncherActivity.this)
+							.setMessage(LauncherActivity.this.getString(R.string.msg_data_not_exported))
+							.setPositiveButton(LauncherActivity.this.getString(R.string.ok), null)
+							.create().show();
 						}
 						
 					}
@@ -415,94 +397,24 @@ public class LauncherActivity extends ExpandableListActivity implements
 					public void onClick(DialogInterface d, int which)
 					{
 						d.dismiss();
+
+						ImportExportManager manager = new ImportExportManager();
 						
-						boolean ok = false;
-						
-						File sd = Environment.getExternalStorageDirectory();
-						
-						String fileName = String.format("%s/%s", sd.getAbsolutePath(), SETTINGS_FILE);
-						try
+						boolean ok = manager.Import(apps, pm, appdb);
+						if (ok)
 						{
-							FileReader f = new FileReader(fileName);
-							BufferedReader br = new BufferedReader(f);
-							String s, target = "";
-							while((s = br.readLine()) != null) 
-							{
-								target = target + s;
-							} 
-							f.close();
+							refresh();
 							
-							
-							if (!target.equals(""))
-							{
-								JSONObject data = new JSONObject(target.toString());
-
-								Map<String, List<PackageInfo>> categories = new HashMap<String, List<PackageInfo>>();
-								for(Iterator keys = data.keys(); keys.hasNext(); ) 
-								{
-									String key = keys.next().toString();
-
-									List<PackageInfo> packagesInCategory = new ArrayList<PackageInfo>();
-									JSONArray packages = data.getJSONArray(key);
-									for (int i = 0 ; i < packages.length() ; i++)
-									{
-										for (Iterator<ResolveInfo> appIterator = apps.iterator(); appIterator.hasNext(); )
-										{
-											String packageName = packages.get(i).toString();
-											
-											ResolveInfo rInfo = appIterator.next();
-											String name = rInfo.activityInfo.packageName;
-
-											if (name.equals(packageName))
-											{
-												String desc = rInfo.loadLabel(pm).toString();
-												if (desc == null)
-													desc = name;
-
-												PackageInfo packageInfo = new PackageInfo();
-												packageInfo.packageName = name;
-												packageInfo.packageDescription = desc;
-												packagesInCategory.add(packageInfo);	
-												
-												break;
-											}
-										}
-									}
-									
-									categories.put(key, packagesInCategory);
-									
-								}
-
-								appdb.importData(categories);
-								
-								ok = true;
-								
-								refresh();
-								
-								new AlertDialog.Builder(LauncherActivity.this)
-								.setMessage(String.format(LauncherActivity.this.getString(R.string.msg_data_imported), fileName))
-								.setPositiveButton(LauncherActivity.this.getString(R.string.ok), null)
-								.create().show();								
-							}
+							new AlertDialog.Builder(LauncherActivity.this)
+							.setMessage(String.format(LauncherActivity.this.getString(R.string.msg_data_imported), manager.getFileName()))
+							.setPositiveButton(LauncherActivity.this.getString(R.string.ok), null)
+							.create().show();								
 						}
-						catch (FileNotFoundException e)
-						{
-							Log.e(TAG, "", e);
-						}
-						catch (IOException e)
-						{
-							Log.e(TAG, "", e);
-						}
-						catch (Exception e)
-						{
-							Log.e(TAG, "", e);
-						}
-
-						if (!ok)
+						else
 						{
 							new AlertDialog.Builder(LauncherActivity.this)
 							.setTitle(LauncherActivity.this.getString(R.string.error))
-							.setMessage(String.format(LauncherActivity.this.getString(R.string.msg_couldnt_import), fileName))
+							.setMessage(String.format(LauncherActivity.this.getString(R.string.msg_couldnt_import), manager.getFileName()))
 							.setPositiveButton(LauncherActivity.this.getString(R.string.ok), null)
 							.create().show();
 						}
@@ -585,7 +497,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 			Log.d(TAG, String.format("entering first pass with %d unresolved",
 					passone.size()));
 
-			List<String> categories = new ArrayList<String>();
+			List<Category> categories = new ArrayList<Category>();
 			try
 			{
 				appdb.getCategories(categories);
@@ -595,29 +507,31 @@ public class LauncherActivity extends ExpandableListActivity implements
 				Log.e(TAG, "", e);
 			}
 
-			for (String category : categories)
-				addMappingHelper(entryMap, null, category);
+			for (Category category : categories)
+			{
+				if (category.getVisible())
+					addMappingHelper(entryMap, null, category.getName());
+			}
 
 			for (EntryInfo entry : passone)
 			{
-				// try resolving category using internal database
 				String packageName = entry.resolveInfo.activityInfo.packageName;
 				try
 				{
-					String categoryName = appdb.getCategory(packageName);
+					String categoryName = appdb.getCategoryForPackage(packageName);
 					if (categoryName != null)
 					{
-						// found category for this app, so record it
-						addMappingHelper(entryMap, entry, categoryName);
-
-						Log.d(TAG, String.format(
-								"found categoryName=%s for packageName=%s", categoryName,
-								packageName));
-
+						if (appdb.getCategory(categoryName).getVisible())
+						{
+							addMappingHelper(entryMap, entry, categoryName);
+	
+							Log.d(TAG, String.format(
+									"found categoryName=%s for packageName=%s", categoryName,
+									packageName));
+						}
 					}
 					else
 					{
-						// otherwise keep around for later resolving
 						passtwo.add(entry);
 					}
 				}
@@ -631,7 +545,6 @@ public class LauncherActivity extends ExpandableListActivity implements
 			Log.d(TAG, String.format("entering second pass with %d unresolved",
 					passtwo.size()));
 
-			// second pass tries resolving unknown apps
 			if (passtwo.size() > 0)
 			{
 				for (EntryInfo entry : passtwo)
@@ -1108,7 +1021,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 		try
 		{
 			final String packageName2 = info.resolveInfo.activityInfo.packageName;
-			final String categoryName = appdb.getCategory(packageName2);
+			final String categoryName = appdb.getCategoryForPackage(packageName2);
 			if (categoryName != null && !categoryName.equals(""))
 			{
 				menu.add(LauncherActivity.this.getString(R.string.remove_from_category))

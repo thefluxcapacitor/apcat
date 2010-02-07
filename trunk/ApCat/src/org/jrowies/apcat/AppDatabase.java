@@ -40,19 +40,20 @@ public class AppDatabase extends SQLiteOpenHelper
 	private boolean mappingValidCache = false;
 	private boolean categoriesValidCache = false;
 	private Map<String, String> packageMappingCache = new HashMap<String, String>();
-	private List<String> categoriesCache = new ArrayList<String>();
+	private List<Category> categoriesCache = new ArrayList<Category>();
 
 	public static final String TAG = AppDatabase.class.toString();
 
 	public final static String DB_NAME = "apps";
-	public final static int DB_VERSION = 1;
+	public final static int DB_VERSION = 2;
 
 	public final static String TABLE_CAT = "cat";
-	public final static String FIELD_CAT_ID = "_id";
+	//public final static String FIELD_CAT_ID = "_id";
 	public final static String FIELD_CAT_CATEGORY = "category";
+	public final static String FIELD_CAT_VISIBLE = "visible";
 
 	public final static String TABLE_APP = "app";
-	public final static String FIELD_APP_ID = "_id";
+	//public final static String FIELD_APP_ID = "_id";
 	public final static String FIELD_APP_CATEGORY = "category";
 	public final static String FIELD_APP_PACKAGE = "package";
 	public final static String FIELD_APP_DESCRIP = "descrip";
@@ -65,7 +66,7 @@ public class AppDatabase extends SQLiteOpenHelper
 		GROUP_UNKNOWN = context.getString(R.string.uncategorized);
 	}
 
-	public void getCategories(List<String> categories) throws Exception
+	public void getCategories(List<Category> categories) throws Exception
 	{
 		synchronized (categoriesLock)
 		{
@@ -139,12 +140,15 @@ public class AppDatabase extends SQLiteOpenHelper
 	@Override
 	public void onCreate(SQLiteDatabase db)
 	{
-		db.execSQL("CREATE TABLE " + TABLE_APP + " (" + FIELD_APP_ID
-				+ " INTEGER PRIMARY KEY, " + FIELD_APP_CATEGORY + " TEXT, "
+		db.execSQL("CREATE TABLE " + TABLE_APP + " (" 
+				//+ FIELD_APP_ID + " INTEGER PRIMARY KEY, " 
+				+ FIELD_APP_CATEGORY + " TEXT, "
 				+ FIELD_APP_PACKAGE + " TEXT, " + FIELD_APP_DESCRIP + ")");
 
-		db.execSQL("CREATE TABLE " + TABLE_CAT + " (" + FIELD_CAT_ID
-				+ " INTEGER PRIMARY KEY, " + FIELD_CAT_CATEGORY + " TEXT )");
+		db.execSQL("CREATE TABLE " + TABLE_CAT + " (" 
+				//+ FIELD_CAT_ID + " INTEGER PRIMARY KEY, "
+				+ FIELD_CAT_VISIBLE + " INTEGER, "
+				+ FIELD_CAT_CATEGORY + " TEXT )");
 
 		synchronized (mappingLock)
 		{
@@ -157,16 +161,30 @@ public class AppDatabase extends SQLiteOpenHelper
 		}
 	}
 
+	public void recreateDataBase()
+	{
+		SQLiteDatabase db = getReadableDatabase();
+		db.execSQL("DROP TABLE IF EXISTS " + TABLE_APP);
+		db.execSQL("DROP TABLE IF EXISTS " + TABLE_CAT);
+		onCreate(db);
+	}
+	
 	@Override
 	public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion)
 	{
 		int currentVersion = oldVersion;
 
-		if (currentVersion < 1)
+		if (currentVersion < newVersion)
 		{
-			db.execSQL("DROP TABLE IF EXISTS " + TABLE_APP);
-			db.execSQL("DROP TABLE IF EXISTS " + TABLE_CAT);
-			onCreate(db);
+			if (currentVersion == 1)
+			{
+				addCatVisibleColumn(db);
+			}
+			
+//			db.execSQL("DROP TABLE IF EXISTS " + TABLE_APP);
+//			db.execSQL("DROP TABLE IF EXISTS " + TABLE_CAT);
+//			onCreate(db);
+			
 			currentVersion = DB_VERSION;
 		}
 
@@ -181,6 +199,17 @@ public class AppDatabase extends SQLiteOpenHelper
 		}
 	}
 
+	private void addCatVisibleColumn(SQLiteDatabase db)
+	{
+		addColumn(db, TABLE_CAT, FIELD_CAT_VISIBLE, "INTEGER");
+		db.execSQL("UPDATE " + TABLE_CAT + " SET " + FIELD_CAT_VISIBLE + " = 1");
+	}
+	
+	private void addColumn(SQLiteDatabase db, String tableName, String columnName, String columnType)
+	{
+		db.execSQL("ALTER TABLE " + tableName + " ADD " + columnName + " " + columnType);
+	}
+	
 	/**
 	 * Make sure our in-memory cache is loaded. Callers should wrap this call in
 	 * a synchronized block.
@@ -215,23 +244,6 @@ public class AppDatabase extends SQLiteOpenHelper
 
 		c.close();
 
-		c = db.query(TABLE_CAT, new String[] { FIELD_CAT_CATEGORY }, null, null,
-				null, null, null);
-		if (c == null)
-			throw new Exception(
-					"Couldn't load application-to-category mapping database table");
-
-		COL_CATEGORY = c.getColumnIndexOrThrow(FIELD_CAT_CATEGORY);
-
-		while (c.moveToNext())
-		{
-			String categoryName = c.getString(COL_CATEGORY);
-
-			categoriesCache.add(categoryName);
-		}
-
-		c.close();
-
 		mappingValidCache = true;
 	}
 
@@ -242,17 +254,22 @@ public class AppDatabase extends SQLiteOpenHelper
 			return;
 
 		SQLiteDatabase db = this.getReadableDatabase();
-		Cursor c = db.query(TABLE_CAT, new String[] { FIELD_CAT_CATEGORY }, null,
+		Cursor c = db.query(TABLE_CAT, new String[] { FIELD_CAT_CATEGORY, FIELD_CAT_VISIBLE }, null,
 				null, null, null, null);
 		if (c == null)
 			throw new Exception("Couldn't load category database table");
 
 		int COL_CATEGORY = c.getColumnIndexOrThrow(FIELD_CAT_CATEGORY);
+		int COL_VISIBLE = c.getColumnIndexOrThrow(FIELD_CAT_VISIBLE);
 
 		while (c.moveToNext())
 		{
 			String categoryName = c.getString(COL_CATEGORY);
-			categoriesCache.add(categoryName);
+			Integer categoryVisible = c.getInt(COL_VISIBLE);
+			if (categoryVisible == 1)
+				categoriesCache.add(new Category(categoryName, true));
+			else
+				categoriesCache.add(new Category(categoryName, false));
 		}
 
 		c.close();
@@ -293,7 +310,7 @@ public class AppDatabase extends SQLiteOpenHelper
 	 * Find the category for the given package name, which may return null if we
 	 * don't have it cached.
 	 */
-	public String getCategory(String packageName) throws Exception
+	public String getCategoryForPackage(String packageName) throws Exception
 	{
 		String result = null;
 		synchronized (mappingLock)
@@ -304,23 +321,31 @@ public class AppDatabase extends SQLiteOpenHelper
 		return result;
 	}
 
-	public void importData(Map<String, List<LauncherActivity.PackageInfo>> data)
+	public Category getCategory(String categoryName)
+	{
+		for (Category cat : categoriesCache)
+			if (cat.getName().equals(categoryName))
+				return cat;
+		
+		return null;
+	}
+	
+	public void importData(Map<Category, List<ImportExportManager.PackageInfo>> data)
 	{
 		SQLiteDatabase db = this.getWritableDatabase();
 		try
 		{
 			db.beginTransaction();
 
-			deleteAllMappings(db);
-			deleteAllCategories(db);
+			deleteAll(db);
 
-			for (String category : data.keySet())
+			for (Category category : data.keySet())
 			{
 			  addCategory(category, db);
 			  
-			  for (LauncherActivity.PackageInfo info : data.get(category))
+			  for (ImportExportManager.PackageInfo info : data.get(category))
 			  {
-				  addMapping(info.packageName, category, info.packageDescription);			  	
+				  addMapping(info.packageName, category.getName(), info.packageDescription);			  	
 			  }
 
 			}
@@ -375,18 +400,20 @@ public class AppDatabase extends SQLiteOpenHelper
 
 	}
 
-	public void addCategory(String categoryName)
+	public void addCategory(Category category)
 	{
-		addCategory(categoryName, null);
+		addCategory(category, null);
 	}
 	
-	public void addCategory(String categoryName, SQLiteDatabase db)
+	public void addCategory(Category category, SQLiteDatabase db)
 	{
-		if (categoriesCache.contains(categoryName))
+		int index = categoriesCache.indexOf(category);
+		if ((index > -1) && (categoriesCache.get(index).getVisible() == category.getVisible()))
 			return;
 
 		ContentValues values = new ContentValues();
-		values.put(FIELD_CAT_CATEGORY, categoryName);
+		values.put(FIELD_CAT_CATEGORY, category.getName());
+		values.put(FIELD_CAT_VISIBLE, category.getVisible());
 
 		if (db == null)
 			db = this.getWritableDatabase();
@@ -432,41 +459,10 @@ public class AppDatabase extends SQLiteOpenHelper
 		}
 
 	}
-	
-	/**
-	 * Remove all known mappings from database. Probably used when performing an
-	 * entire refresh and re-categorization. Will obviously invalidate any
-	 * in-memory cache.
-	 */
-	public void deleteAllMappings(SQLiteDatabase db)
-	{
-		if (db == null)
-			db = this.getWritableDatabase();
 
+	public void deleteAll(SQLiteDatabase db)
+	{
 		db.delete(TABLE_APP, null, null);
-
-		synchronized (mappingLock)
-		{
-			invalidateMappingCache();
-		}
-
-		synchronized (categoriesLock)
-		{
-			invalidateCategoriesCache();
-		}
-
-	}
-
-	public void deleteAllMappings()
-	{
-		deleteAllMappings(null);
-	}
-	
-	public void deleteAllCategories(SQLiteDatabase db)
-	{
-		if (db == null)
-			db = this.getWritableDatabase();
-		
 		db.delete(TABLE_CAT, null, null);
 
 		synchronized (mappingLock)
@@ -478,11 +474,18 @@ public class AppDatabase extends SQLiteOpenHelper
 		{
 			invalidateCategoriesCache();
 		}
-
 	}
-
-	public void deleteAllCategories()
+	
+	public void updateVisibleCat(Category category)
 	{
-		deleteAllCategories(null);
+		//no need to update cache bacause categoy item is the same instance that belongs to cache
+		
+		SQLiteDatabase db = getWritableDatabase();
+		int visible = 0;
+		if (category.getVisible())
+			visible = 1;
+		db.execSQL("UPDATE " + TABLE_CAT + " SET " + FIELD_CAT_VISIBLE + 
+				" = " + visible + " WHERE " + FIELD_CAT_CATEGORY + " = '" +
+				category.getName() + "'");
 	}
 }
