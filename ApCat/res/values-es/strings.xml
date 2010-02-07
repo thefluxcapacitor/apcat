@@ -33,4 +33,7 @@
 <string name="select_all">Seleccionar todas</string>
 <string name="unselect_all">Deseleccionar todas</string>
 <string name="msg_loading">Cargando. Espere por favor...</string>
+<string name="msg_data_not_exported">Los datos no se pudieron exportar</string>
+<string name="msg_set_visible_cat">Seleccionar categories visibles</string>
+<string name="set_visible_cat">Filtro de categorias</string>
 </resources>

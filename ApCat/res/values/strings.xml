@@ -34,4 +34,7 @@
 	<string name="select_all">Select all</string>
 	<string name="unselect_all">Unselect all</string>
 	<string name="msg_loading">Loading. Please wait...</string>
+<string name="msg_data_not_exported">Data could not be exported</string>
+<string name="msg_set_visible_cat">Select visible categories</string>
+<string name="set_visible_cat">Category filter</string>
 </resources>
