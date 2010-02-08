@@ -143,7 +143,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 		super.onCreateOptionsMenu(menu);
 
 		menu.add(this.getString(R.string.new_category))
-		.setIcon(R.drawable.add)
+		.setIcon(android.R.drawable.ic_menu_add)
 		.setOnMenuItemClickListener(new OnMenuItemClickListener()
 		{
 			public boolean onMenuItemClick(MenuItem item)
@@ -226,7 +226,8 @@ public class LauncherActivity extends ExpandableListActivity implements
 					}
 				});
 
-		menu.add(LauncherActivity.this.getString(R.string.refresh)).setIcon(R.drawable.ic_menu_refresh)
+		menu.add(LauncherActivity.this.getString(R.string.refresh))
+		.setIcon(R.drawable.ic_menu_refresh)
 				.setOnMenuItemClickListener(new OnMenuItemClickListener()
 				{
 					public boolean onMenuItemClick(MenuItem item)
@@ -237,7 +238,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 				});
 
 		menu.add(LauncherActivity.this.getString(R.string.export))
-		.setIcon(R.drawable.export)
+		.setIcon(android.R.drawable.ic_menu_save)
 		.setOnMenuItemClickListener(
 				new OnMenuItemClickListener()
 				{
@@ -249,7 +250,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 				});
 
 		menu.add(LauncherActivity.this.getString(R.string.str_import))
-		.setIcon(R.drawable.icon_import)
+		.setIcon(android.R.drawable.ic_menu_upload)
 		.setOnMenuItemClickListener(
 				new OnMenuItemClickListener()
 				{
@@ -273,7 +274,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 				});
 		
 		menu.add(LauncherActivity.this.getString(R.string.reset))
-		.setIcon(R.drawable.reset)
+		.setIcon(android.R.drawable.ic_menu_delete)
 		.setOnMenuItemClickListener(
 				new OnMenuItemClickListener()
 				{
