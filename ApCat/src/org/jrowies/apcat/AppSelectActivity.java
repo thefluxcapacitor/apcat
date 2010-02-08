@@ -459,7 +459,7 @@ public class AppSelectActivity extends Activity implements OnClickListener
 	{
 		super.onCreateOptionsMenu(menu);
 
-		menu.add(this.getString(R.string.show_all)).setIcon(R.drawable.show_all)
+		menu.add(this.getString(R.string.show_all)).setIcon(android.R.drawable.ic_menu_view)
 		.setOnMenuItemClickListener(new OnMenuItemClickListener()
 		{
 			public boolean onMenuItemClick(MenuItem item)
@@ -479,7 +479,7 @@ public class AppSelectActivity extends Activity implements OnClickListener
 			}
 		});
 
-		menu.add(this.getString(R.string.select_all)).setIcon(R.drawable.checkall)
+		menu.add(this.getString(R.string.select_all)).setIcon(android.R.drawable.ic_menu_agenda)
 		.setOnMenuItemClickListener(new OnMenuItemClickListener()
 		{
 			public boolean onMenuItemClick(MenuItem item)
