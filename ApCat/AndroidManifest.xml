@@ -13,6 +13,8 @@
 	
 <activity android:name="AppSelectActivity" android:theme="@style/Theme" android:label="@string/app_name" android:configChanges="orientation|keyboardHidden"></activity>
 <activity android:name="CategorySelectActivity" android:theme="@style/Theme" android:label="@string/app_name" android:configChanges="orientation|keyboardHidden"></activity>
+<activity android:name="IconSelectActivity" android:theme="@style/Theme" android:label="@string/app_name" android:configChanges="orientation|keyboardHidden"></activity>
+<activity android:name="IconPackSelectActivity" android:theme="@style/Theme" android:label="@string/app_name" android:configChanges="orientation|keyboardHidden"></activity>
 </application>
 	
 </manifest> 

@@ -1,0 +1,64 @@
+package org.jrowies.apcat;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import android.os.Bundle;
+import android.widget.RadioButton;
+import android.widget.RadioGroup;
+import android.widget.ScrollView;
+import android.widget.TableLayout;
+import android.widget.TextView;
+
+public class IconPackSelectActivity extends ScrollListSelectActivity
+{
+	//public static final String EXTRAS_ICON_PACKS = "EXTRAS_ICON_PACKS";
+	
+	@Override
+	protected void acceptMethod()
+	{
+	}
+
+	@Override
+	protected String getTitleText()
+	{
+		return "aaaaa";
+	}
+
+	@Override
+	protected void createMethod(Bundle savedInstanceState, ScrollView scrollView)
+	{
+		drawItems(scrollView);
+	}
+	
+	public static List<LauncherActivity.IconPackInfo> iconPacks;
+	
+	private void drawItems(ScrollView scrollView)
+	{
+		scrollView.removeAllViews();
+
+		TableLayout table = new TableLayout(this);
+
+//		Bundle bundle = getIntent().getBundleExtra(EXTRAS_ICON_PACKS);
+//		for (String key : bundle.keySet())
+//		{
+//		}
+
+		RadioGroup radioGroup = new RadioGroup(this);
+		
+		for (LauncherActivity.IconPackInfo info : iconPacks)
+		{
+			RadioButton view = new RadioButton(this);
+			view.setText(info.description);
+			view.setTag(info.packageName);
+			//view.setCompoundDrawables(null, null, category.getImageAsCachedDrawable(), null);
+			radioGroup.addView(view);
+			
+//			table.addView(view);
+		}
+
+		table.addView(radioGroup);
+		scrollView.addView(table);
+	}
+
+}

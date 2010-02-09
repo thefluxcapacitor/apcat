@@ -51,6 +51,7 @@ public class AppDatabase extends SQLiteOpenHelper
 	//public final static String FIELD_CAT_ID = "_id";
 	public final static String FIELD_CAT_CATEGORY = "category";
 	public final static String FIELD_CAT_VISIBLE = "visible";
+	public final static String FIELD_CAT_IMAGE = "image";
 
 	public final static String TABLE_APP = "app";
 	//public final static String FIELD_APP_ID = "_id";
@@ -66,7 +67,7 @@ public class AppDatabase extends SQLiteOpenHelper
 		GROUP_UNKNOWN = context.getString(R.string.uncategorized);
 	}
 
-	public void getCategories(List<Category> categories) throws Exception
+	public void getCategories(List<Category> categories) 
 	{
 		synchronized (categoriesLock)
 		{
@@ -123,7 +124,7 @@ public class AppDatabase extends SQLiteOpenHelper
 	}
 	
 	public void getPackagesForCategory(List<String> packagesInCategory,
-			String categoryName) throws Exception
+			String categoryName) 
 	{
 		synchronized (mappingLock)
 		{
@@ -148,6 +149,7 @@ public class AppDatabase extends SQLiteOpenHelper
 		db.execSQL("CREATE TABLE " + TABLE_CAT + " (" 
 				//+ FIELD_CAT_ID + " INTEGER PRIMARY KEY, "
 				+ FIELD_CAT_VISIBLE + " INTEGER, "
+				+ FIELD_CAT_IMAGE + " BLOB, "
 				+ FIELD_CAT_CATEGORY + " TEXT )");
 
 		synchronized (mappingLock)
@@ -179,6 +181,7 @@ public class AppDatabase extends SQLiteOpenHelper
 			if (currentVersion == 1)
 			{
 				addCatVisibleColumn(db);
+				addCatImageColumn(db);
 			}
 			
 //			db.execSQL("DROP TABLE IF EXISTS " + TABLE_APP);
@@ -204,6 +207,11 @@ public class AppDatabase extends SQLiteOpenHelper
 		addColumn(db, TABLE_CAT, FIELD_CAT_VISIBLE, "INTEGER");
 		db.execSQL("UPDATE " + TABLE_CAT + " SET " + FIELD_CAT_VISIBLE + " = 1");
 	}
+
+	private void addCatImageColumn(SQLiteDatabase db)
+	{
+		addColumn(db, TABLE_CAT, FIELD_CAT_IMAGE, "BLOB");
+	}
 	
 	private void addColumn(SQLiteDatabase db, String tableName, String columnName, String columnType)
 	{
@@ -214,7 +222,7 @@ public class AppDatabase extends SQLiteOpenHelper
 	 * Make sure our in-memory cache is loaded. Callers should wrap this call in
 	 * a synchronized block.
 	 */
-	private void assertMappingCache() throws Exception
+	private void assertMappingCache() 
 	{
 		// skip if already cached, otherwise create and fill
 		if (mappingValidCache)
@@ -224,9 +232,6 @@ public class AppDatabase extends SQLiteOpenHelper
 		SQLiteDatabase db = this.getReadableDatabase();
 		Cursor c = db.query(TABLE_APP, new String[] { FIELD_APP_PACKAGE,
 				FIELD_APP_CATEGORY }, null, null, null, null, null);
-		if (c == null)
-			throw new Exception(
-					"Couldn't load application-to-category mapping database table");
 
 		int COL_PACKAGE = c.getColumnIndexOrThrow(FIELD_APP_PACKAGE), COL_CATEGORY = c
 				.getColumnIndexOrThrow(FIELD_APP_CATEGORY);
@@ -247,29 +252,31 @@ public class AppDatabase extends SQLiteOpenHelper
 		mappingValidCache = true;
 	}
 
-	private void assertCategoriesCache() throws Exception
+	private void assertCategoriesCache() 
 	{
 
 		if (categoriesValidCache)
 			return;
 
 		SQLiteDatabase db = this.getReadableDatabase();
-		Cursor c = db.query(TABLE_CAT, new String[] { FIELD_CAT_CATEGORY, FIELD_CAT_VISIBLE }, null,
+		Cursor c = db.query(TABLE_CAT, new String[] { FIELD_CAT_CATEGORY, FIELD_CAT_VISIBLE, FIELD_CAT_IMAGE }, null,
 				null, null, null, null);
-		if (c == null)
-			throw new Exception("Couldn't load category database table");
 
 		int COL_CATEGORY = c.getColumnIndexOrThrow(FIELD_CAT_CATEGORY);
 		int COL_VISIBLE = c.getColumnIndexOrThrow(FIELD_CAT_VISIBLE);
+		int COL_IMAGE = c.getColumnIndexOrThrow(FIELD_CAT_IMAGE);
 
 		while (c.moveToNext())
 		{
 			String categoryName = c.getString(COL_CATEGORY);
 			Integer categoryVisible = c.getInt(COL_VISIBLE);
-			if (categoryVisible == 1)
-				categoriesCache.add(new Category(categoryName, true));
-			else
-				categoriesCache.add(new Category(categoryName, false));
+			byte[] categoryImage = c.getBlob(COL_IMAGE);
+			
+			Category cat = new Category(categoryName);
+			cat.setVisible(categoryVisible == 1);
+			cat.setImage(categoryImage);
+			
+			categoriesCache.add(cat);
 		}
 
 		c.close();
@@ -310,7 +317,7 @@ public class AppDatabase extends SQLiteOpenHelper
 	 * Find the category for the given package name, which may return null if we
 	 * don't have it cached.
 	 */
-	public String getCategoryForPackage(String packageName) throws Exception
+	public String getCategoryForPackage(String packageName) 
 	{
 		String result = null;
 		synchronized (mappingLock)
@@ -323,11 +330,16 @@ public class AppDatabase extends SQLiteOpenHelper
 
 	public Category getCategory(String categoryName)
 	{
-		for (Category cat : categoriesCache)
-			if (cat.getName().equals(categoryName))
-				return cat;
-		
-		return null;
+		synchronized (categoriesLock)
+		{
+			assertCategoriesCache();
+
+			for (Category cat : categoriesCache)
+				if (cat.getName().equals(categoryName))
+					return cat;
+			
+			return null;
+		}
 	}
 	
 	public void importData(Map<Category, List<ImportExportManager.PackageInfo>> data)
@@ -414,6 +426,7 @@ public class AppDatabase extends SQLiteOpenHelper
 		ContentValues values = new ContentValues();
 		values.put(FIELD_CAT_CATEGORY, category.getName());
 		values.put(FIELD_CAT_VISIBLE, category.getVisible());
+		values.put(FIELD_CAT_IMAGE, category.getImage());
 
 		if (db == null)
 			db = this.getWritableDatabase();
@@ -478,7 +491,7 @@ public class AppDatabase extends SQLiteOpenHelper
 	
 	public void updateVisibleCat(Category category)
 	{
-		//no need to update cache bacause categoy item is the same instance that belongs to cache
+		//no need to update cache bacause category item is the same instance that belongs to cache
 		
 		SQLiteDatabase db = getWritableDatabase();
 		int visible = 0;
@@ -487,5 +500,20 @@ public class AppDatabase extends SQLiteOpenHelper
 		db.execSQL("UPDATE " + TABLE_CAT + " SET " + FIELD_CAT_VISIBLE + 
 				" = " + visible + " WHERE " + FIELD_CAT_CATEGORY + " = '" +
 				category.getName() + "'");
+	}
+	
+	public void updateImageCat(Category category)
+	{
+		//no need to update cache bacause category item is the same instance that belongs to cache
+		
+		SQLiteDatabase db = getWritableDatabase();
+
+		ContentValues values = new ContentValues();
+		values.put(FIELD_CAT_IMAGE, category.getImage());
+		
+		String[] params = new String[1];
+		params[0] = category.getName();
+		
+		db.update(TABLE_CAT, values, FIELD_CAT_CATEGORY + " = ?", params);
 	}
 }

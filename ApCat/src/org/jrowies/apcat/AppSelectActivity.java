@@ -29,7 +29,6 @@ import org.jsharkey.grouphome.Utilities;
 import com.google.android.photostream.UserTask;
 
 import android.app.Activity;
-import android.app.ProgressDialog;
 import android.content.pm.ResolveInfo;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
@@ -46,9 +45,8 @@ import android.widget.ScrollView;
 import android.widget.TableLayout;
 import android.widget.TextView;
 
-public class AppSelectActivity extends Activity implements OnClickListener
+public class AppSelectActivity extends ScrollListSelectActivity
 {
-
 	class PackageInfo
 	{
 		CharSequence packageName;
@@ -56,9 +54,6 @@ public class AppSelectActivity extends Activity implements OnClickListener
 		ResolveInfo resolveInfo;
 		Drawable icon;
 	}
-
-	private Button acceptButton;
-	private Button cancelButton;
 
 	private String groupName;
 
@@ -393,6 +388,7 @@ public class AppSelectActivity extends Activity implements OnClickListener
 					chkList.add(chkBox);
 				}
 			}
+			
 			scrollView.addView(table);
 		}
 		finally
@@ -403,31 +399,6 @@ public class AppSelectActivity extends Activity implements OnClickListener
 //				dialog = null;
 //			}
 		}
-	}
-	
-	@Override
-	public void onCreate(Bundle savedInstanceState)
-	{
-		super.onCreate(savedInstanceState);
-
-		groupName = this.getIntent().getExtras().getString(groupNameIntentExtra);
-
-		setContentView(R.layout.scroll_list);
-		
-		TextView titulo = (TextView) findViewById(R.id.TextView01);
-		titulo.setText(String.format(this.getString(R.string.select_applications_of), groupName));
-
-		iconSize = (int) getResources().getDimension(android.R.dimen.app_icon_size);
-
-		acceptButton = (Button) findViewById(R.id.Button01);
-		acceptButton.setText(this.getString(R.string.ok));
-		acceptButton.setOnClickListener(this);
-
-		cancelButton = (Button) findViewById(R.id.Button02);
-		cancelButton.setText(this.getString(R.string.cancel));
-		cancelButton.setOnClickListener(this);
-		
-		drawApplications(false);
 	}
 	
 	private class ThumbTask extends UserTask<Object, Void, Object[]>
@@ -502,36 +473,42 @@ public class AppSelectActivity extends Activity implements OnClickListener
 		return true;
 	}
 	
-	public void onClick(View v)
+	@Override
+	protected void acceptMethod()
 	{
-		if (v.equals(acceptButton))
+		for (CheckBox chk : chkList)
 		{
-			for (CheckBox chk : chkList)
+			PackageInfo pkgInfo = (PackageInfo) chk.getTag();
+
+			if (chk.isChecked()
+					&& !packagesInCategory.contains(pkgInfo.packageName.toString()))
 			{
-				PackageInfo pkgInfo = (PackageInfo) chk.getTag();
-
-				if (chk.isChecked()
-						&& !packagesInCategory.contains(pkgInfo.packageName.toString()))
-				{
-					LauncherActivity.appdb.addToCategory(groupName, pkgInfo.packageName
-							.toString(), pkgInfo.packageDescription.toString());
-				}
-				else if (!chk.isChecked()
-						&& packagesInCategory.contains(pkgInfo.packageName.toString()))
-				{
-					LauncherActivity.appdb.removeFromCategory(groupName,
-							pkgInfo.packageName.toString());
-				}
-
+				LauncherActivity.appdb.addToCategory(groupName, pkgInfo.packageName
+						.toString(), pkgInfo.packageDescription.toString());
 			}
-			
-			this.finish();
+			else if (!chk.isChecked()
+					&& packagesInCategory.contains(pkgInfo.packageName.toString()))
+			{
+				LauncherActivity.appdb.removeFromCategory(groupName,
+						pkgInfo.packageName.toString());
+			}
+		}
+	}
 
-		}
-		else if (v.equals(cancelButton))
-		{
-			this.finish();
-		}
+	@Override
+	protected void createMethod(Bundle savedInstanceState, ScrollView scrollView)
+	{
+		groupName = this.getIntent().getExtras().getString(groupNameIntentExtra);
+		iconSize = (int) getResources().getDimension(android.R.dimen.app_icon_size);
+		
+		drawApplications(false);
+	}
+
+	@Override
+	protected String getTitleText()
+	{
+		String groupNameAux = this.getIntent().getExtras().getString(groupNameIntentExtra);
+		return String.format(this.getString(R.string.select_applications_of), groupNameAux);
 	}
 
 }

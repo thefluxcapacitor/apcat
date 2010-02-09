@@ -6,43 +6,13 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import android.app.Activity;
 import android.os.Bundle;
-import android.util.Log;
-import android.view.View;
-import android.view.View.OnClickListener;
-import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.ScrollView;
 import android.widget.TableLayout;
-import android.widget.TextView;
 
-public class CategorySelectActivity extends Activity implements OnClickListener
+public class CategorySelectActivity extends ScrollListSelectActivity
 {
-	private Button acceptButton;
-	private Button cancelButton;
-	
-	@Override
-	public void onCreate(Bundle savedInstanceState)
-	{
-		super.onCreate(savedInstanceState);
-
-		setContentView(R.layout.scroll_list);
-		
-		TextView titulo = (TextView) findViewById(R.id.TextView01);
-		titulo.setText(this.getString(R.string.msg_set_visible_cat));
-
-		acceptButton = (Button) findViewById(R.id.Button01);
-		acceptButton.setText(this.getString(R.string.ok));
-		acceptButton.setOnClickListener(this);
-
-		cancelButton = (Button) findViewById(R.id.Button02);
-		cancelButton.setText(this.getString(R.string.cancel));
-		cancelButton.setOnClickListener(this);
-		
-		drawCategories();
-	}
-
 	private List<CheckBox> chkList;
 	
 	private void drawCategories()
@@ -55,14 +25,7 @@ public class CategorySelectActivity extends Activity implements OnClickListener
 		CheckBox chkBox;
 
 		List<Category> categories = new ArrayList<Category>();
-		try
-		{
-			LauncherActivity.appdb.getCategories(categories);
-		}
-		catch (Exception e)
-		{
-			Log.e(LauncherActivity.TAG, "", e);
-		}
+		LauncherActivity.appdb.getCategories(categories);
 		
 		final Collator collator = Collator.getInstance();
 		Collections.sort(categories, new Comparator<Category>()
@@ -80,6 +43,7 @@ public class CategorySelectActivity extends Activity implements OnClickListener
 			chkBox.setText(category.getName());
 			chkBox.setTag(category);
 			chkBox.setChecked(category.getVisible());
+			chkBox.setCompoundDrawables(null, null, category.getImageAsCachedDrawable(), null);
 			chkList.add(chkBox);
 			table.addView(chkBox);
 		}
@@ -87,24 +51,27 @@ public class CategorySelectActivity extends Activity implements OnClickListener
 		scrollView.addView(table);
 	}
 	
-	public void onClick(View v)
+	@Override
+	protected void acceptMethod()
 	{
-		if (v.equals(acceptButton))
+		for (CheckBox chk : chkList)
 		{
-			for (CheckBox chk : chkList)
-			{
-				Category cat = (Category) chk.getTag();
-				cat.setVisible(chk.isChecked());
-				LauncherActivity.appdb.updateVisibleCat(cat);
-			}
-			
-			this.finish();
+			Category cat = (Category) chk.getTag();
+			cat.setVisible(chk.isChecked());
+			LauncherActivity.appdb.updateVisibleCat(cat);
+		}
+	}
 
-		}
-		else if (v.equals(cancelButton))
-		{
-			this.finish();
-		}
+	@Override
+	protected void createMethod(Bundle savedInstanceState, ScrollView scrollView)
+	{
+		drawCategories();
+	}
+
+	@Override
+	protected String getTitleText()
+	{
+		return this.getString(R.string.msg_set_visible_cat);
 	}
 
 }

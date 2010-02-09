@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:orientation="vertical" android:layout_height="wrap_content"
+	android:layout_width="fill_parent">
+	<TextView android:id="@+id/TextView01"
+		android:layout_height="wrap_content"
+		android:layout_width="wrap_content" android:text="title" />
+	<GridView android:id="@+id/gridView"
+		android:layout_width="fill_parent"
+		android:layout_height="wrap_content" android:verticalSpacing="10dp"
+		android:numColumns="auto_fit" android:columnWidth="60dp"
+		android:stretchMode="columnWidth" android:gravity="center" />
+		<!-- android:layout_marginBottom="50dip" -->
+	<!--<LinearLayout android:orientation="horizontal"
+		android:layout_marginTop="-50dip" android:gravity="bottom"
+		android:layout_width="fill_parent"
+		android:layout_height="wrap_content" android:weightSum="100">
+		<Button android:id="@+id/Button01"
+			android:layout_height="wrap_content" android:layout_width="0px"
+			android:layout_weight="50" android:text="Aceptar" />
+		<Button android:id="@+id/Button02"
+			android:layout_height="wrap_content" android:layout_width="0px"
+			android:layout_weight="50" android:text="Cancelar" />
+	</LinearLayout>-->
+</LinearLayout>
