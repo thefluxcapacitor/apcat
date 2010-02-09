@@ -1,11 +1,15 @@
 package org.jrowies.apcat;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -19,6 +23,9 @@ import org.json.JSONObject;
 
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.graphics.Bitmap;
+import android.graphics.Bitmap.CompressFormat;
+import android.graphics.BitmapFactory;
 import android.os.Environment;
 import android.util.Log;
 
@@ -34,11 +41,13 @@ public class ImportExportManager
 	private final String VERSIONKEY = "version";
 	private final String CATEGORIESKEY = "categories";
 	private final String VISIBLEKEY = "visible";
+	private final String IMAGEKEY = "image";
 	private final String PACKAGESKEY = "packages";
 	private final String NAMEKEY = "name";
 	private final String TAG = ImportExportManager.class.toString();
 	private final String SETTINGS_FILE = "ApCatSettings.txt"; 
 	private final String SETTINGS_FOLDER = "ApCatSettings";
+	private final String NO_IMAGE = "no_image";
 	
 	private Map<Category, List<String>> data;
 	
@@ -65,6 +74,8 @@ public class ImportExportManager
   
   public boolean Export()
   {
+  	Map<String, Bitmap> images = new HashMap<String, Bitmap>();
+  	
   	JSONObject rootData = new JSONObject();
   	JSONArray arrayCategories = new JSONArray();
   	
@@ -72,12 +83,22 @@ public class ImportExportManager
   	{
   		try
 			{
-  			//arrayCategories.put(entry.getKey().getName());
-  			
   			JSONObject categoryItem = new JSONObject();
 
   			categoryItem.put(NAMEKEY, entry.getKey().getName());
   			categoryItem.put(VISIBLEKEY, entry.getKey().getVisible());
+  			
+  			byte[] imgBytes = entry.getKey().getImage();
+  			if (imgBytes != null)
+  			{
+	  			Bitmap bitmap = BitmapFactory.decodeByteArray(imgBytes, 0, imgBytes.length);
+	  			String imageFileName = Integer.toString(entry.getKey().getName().hashCode()) + ".png";
+	  			images.put(imageFileName, bitmap);
+	  			
+	  			categoryItem.put(IMAGEKEY, imageFileName);
+  			}
+  			else
+  				categoryItem.put(IMAGEKEY, NO_IMAGE);
 				
 				JSONArray arrayPackages = new JSONArray();
 				for (String packageName : entry.getValue())
@@ -90,7 +111,7 @@ public class ImportExportManager
 			{
 				Log.e(TAG, "", e);
 				return false;
-			}	
+			}
   	}
   	
   	try
@@ -117,6 +138,16 @@ public class ImportExportManager
 			f.write(rootData.toString(), 0, rootData.toString().length());
 			f.flush();
 			f.close();
+			
+			deleteBmpFiles(path);
+			
+			for (Entry<String, Bitmap> entry : images.entrySet())
+			{
+				FileOutputStream stream = new FileOutputStream(path.getPath() + File.separator + entry.getKey());
+				entry.getValue().compress(CompressFormat.PNG, 100, stream);
+				stream.flush();
+				stream.close();
+			}
 
   		this.fileName = fileNameLocal;
 			
@@ -138,6 +169,19 @@ public class ImportExportManager
 			return false;
 		}
   }
+
+	private void deleteBmpFiles(File path) throws Exception
+	{
+		for (String file : path.list())
+		{
+			if (file.toLowerCase().endsWith(".png"))
+			{
+				File fileToDelete = new File(path, file);
+				if (!fileToDelete.delete())
+					throw new Exception(String.format("Error deleting file %s", file));
+			}
+		}
+	}
   
   private List<ResolveInfo> appsList; 
   private PackageManager pm;
@@ -151,13 +195,21 @@ public class ImportExportManager
   	
 		try
 		{
+  		String pathImages = null;
+  		
 			String fileNameLocal;
   		File path = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + 
   				File.separator + SETTINGS_FOLDER + File.separator + SETTINGS_FILE);
+  		
   		if (!path.isFile()) 
   		{
     		path = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + 
     				File.separator + SETTINGS_FILE); //backward compatibility
+  		}
+  		else
+  		{
+  			pathImages = new File(Environment.getExternalStorageDirectory().getAbsolutePath() + 
+    				File.separator + SETTINGS_FOLDER).getPath();
   		}
   		
   		fileNameLocal = path.getPath();
@@ -182,7 +234,7 @@ public class ImportExportManager
 				{
 					int version = data.getInt(VERSIONKEY);
 					if (version == 2)
-						parseJSONDataVersion2(data, categories);
+						parseJSONDataVersion2(data, categories, pathImages);
 					else
 						throw new Exception("File version unsupported");
 				}
@@ -242,7 +294,7 @@ public class ImportExportManager
 		}
 	}
 
-	private void parseJSONDataVersion2(JSONObject data, Map<Category, List<PackageInfo>> categories)
+	private void parseJSONDataVersion2(JSONObject data, Map<Category, List<PackageInfo>> categories, String pathImages)
 			throws JSONException
 	{
 		JSONArray categoriesArray = data.getJSONArray(CATEGORIESKEY);
@@ -253,7 +305,17 @@ public class ImportExportManager
 			
 			String nameKey = categoryData.getString(NAMEKEY);
 			boolean visibleKey = categoryData.getBoolean(VISIBLEKEY);
+			String imageKey = categoryData.getString(IMAGEKEY);
+
 			Category cat = new Category(nameKey, visibleKey);
+			
+			if (!imageKey.equals(NO_IMAGE))
+			{
+				Bitmap b = BitmapFactory.decodeFile(pathImages + File.separator + imageKey);
+				ByteArrayOutputStream stream = new ByteArrayOutputStream();
+				b.compress(CompressFormat.PNG, 100, stream);
+				cat.setImage(stream.toByteArray());
+			}
 			
 			JSONArray packagesArray = categoryData.getJSONArray(PACKAGESKEY);
 			List<PackageInfo> packagesInCategory = new ArrayList<PackageInfo>();

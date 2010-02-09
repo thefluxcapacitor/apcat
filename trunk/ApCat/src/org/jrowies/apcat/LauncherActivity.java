@@ -19,17 +19,22 @@
 
 package org.jrowies.apcat;
 
+import java.io.IOException;
 import java.text.Collator;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 import org.jsharkey.grouphome.Utilities;
 
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ExpandableListActivity;
 import android.app.ProgressDialog;
@@ -336,28 +341,14 @@ public class LauncherActivity extends ExpandableListActivity implements
 						List<String> packagesInCategory = new ArrayList<String>();
 
 						List<Category> categories = new ArrayList<Category>();
-						try
-						{
-							appdb.getCategories(categories);
-						}
-						catch (Exception e)
-						{
-							Log.e(TAG, "", e);
-						}
+						appdb.getCategories(categories);
 
 						ImportExportManager manager = new ImportExportManager();
 
 						for (Category cat : categories)
 						{
-							try
-							{
-								packagesInCategory.clear();
-								appdb.getPackagesForCategory(packagesInCategory, cat.getName());
-							}
-							catch (Exception e)
-							{
-								Log.e(TAG, "", e);
-							}
+							packagesInCategory.clear();
+							appdb.getPackagesForCategory(packagesInCategory, cat.getName());
 
 							manager.addCategory(cat);
 							for (String pkg : packagesInCategory)
@@ -499,14 +490,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 					passone.size()));
 
 			List<Category> categories = new ArrayList<Category>();
-			try
-			{
-				appdb.getCategories(categories);
-			}
-			catch (Exception e)
-			{
-				Log.e(TAG, "", e);
-			}
+			appdb.getCategories(categories);
 
 			for (Category category : categories)
 			{
@@ -639,9 +623,17 @@ public class LauncherActivity extends ExpandableListActivity implements
 							radioRenameCat.setLayoutParams(new LayoutParams(
 									LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT));
 							
+							final RadioButton radioSelectIconCat = new RadioButton(
+									LauncherActivity.this);
+							radioSelectIconCat.setText(LauncherActivity.this.getString(R.string.select_image));
+							radioSelectIconCat.setTag(groupName);
+							radioSelectIconCat.setLayoutParams(new LayoutParams(
+									LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT));
+							
 							radioGroup.addView(radioSelectApp);
 							radioGroup.addView(radioDeleteCat);
 							radioGroup.addView(radioRenameCat);
+							radioGroup.addView(radioSelectIconCat);
 
 							radioGroup.setGravity(Gravity.CENTER);
 
@@ -751,7 +743,11 @@ public class LauncherActivity extends ExpandableListActivity implements
 																					d.dismiss();
 																				}
 																			}).create().show();
-														}														
+														}	
+														else if (radioSelectIconCat.isChecked())
+														{
+															selectCatIcon(radioSelectIconCat.getTag().toString());
+														}
 
 													}
 													catch (Exception e)
@@ -783,6 +779,131 @@ public class LauncherActivity extends ExpandableListActivity implements
 
 	}
 
+	public class IconPackInfo
+	{
+		public String packageName;
+		public String description;
+		public Drawable thumb;
+	}
+	
+	private void selectCatIcon(String categoryName)
+	{
+		//This code adapted from AppsOrganizer
+		//http://code.google.com/p/appsorganizer/source/browse/trunk/AppsOrganizer/src/com/google/code/appsorganizer/chooseicon/IconPackActivity.java
+		
+		String thisPackageName = getPackageName();
+		
+		final List<IconPackInfo> iconPacks = new ArrayList<IconPackInfo>();
+		
+		for (ResolveInfo p : apps) 
+		{
+			String packageName = p.activityInfo.applicationInfo.packageName;
+			if (!packageName.startsWith("com.android") && !thisPackageName.equals(packageName) && p.activityInfo.enabled) 
+			{
+				String dir = p.activityInfo.applicationInfo.publicSourceDir;
+				ZipFile z = null;
+				try 
+				{
+					z = new ZipFile(dir);
+					Enumeration<? extends ZipEntry> entries = z.entries();
+					while (entries.hasMoreElements()) 
+					{
+						ZipEntry zipEntry = entries.nextElement();
+
+						String name = zipEntry.getName().toLowerCase();
+						if (name.startsWith("assets") && (name.endsWith(".png") || name.endsWith(".jpg")))
+						{
+							IconPackInfo packInfo = new IconPackInfo();
+							packInfo.packageName = dir;
+							packInfo.description = p.activityInfo.applicationInfo.loadLabel(getPackageManager()).toString();
+							
+							Drawable icon = p.activityInfo.loadIcon(pm);
+							packInfo.thumb = Utilities.createIconThumbnail(icon, 32);
+
+							iconPacks.add(packInfo);
+							break;
+						}
+					}
+				} 
+				catch (Throwable e) 
+				{
+					Log.e(TAG, "", e);
+				} 
+				finally 
+				{
+					if (z != null) 
+					{
+						try 
+						{
+							z.close();
+						} 
+						catch (IOException e) 
+						{
+							Log.e(TAG, "", e);
+						}
+					}
+				}
+			}
+		}
+		
+		final Collator collator = Collator.getInstance();
+		Collections.sort(iconPacks, new Comparator<IconPackInfo>()
+				{
+					public int compare(IconPackInfo object1, IconPackInfo object2)
+					{
+						return collator.compare(object1.description, object2.description);
+					}
+				});
+
+		if (!iconPacks.isEmpty())
+		{
+			Intent intent = new Intent(LauncherActivity.this, IconPackSelectActivity.class);
+			intent.putExtra(IconSelectActivity.EXTRAS_CATEGORY_NAME, categoryName);
+			
+			IconPackSelectActivity.iconPacks = (IconPackInfo[])iconPacks.toArray(new IconPackInfo[iconPacks.size()]); 
+			
+//			Bundle bundle = new Bundle(iconPacks.size());
+//			for (IconPackInfo packInfo : iconPacks)
+//				bundle.putString(packInfo.packageName, packInfo.description);
+//			intent.putExtra(IconPackSelectActivity.EXTRAS_ICON_PACKS, bundle);
+			
+			startActivityForResult(intent, REQUEST_PACK);
+			
+		}
+	}
+	
+	private final int REQUEST_ICON = 1;
+	private final int REQUEST_PACK = 2;
+	
+	public void onActivityResult(int requestCode, int resultCode, Intent intent) 
+	{
+		if (resultCode == Activity.RESULT_OK) 
+		{
+			if (requestCode == REQUEST_ICON)
+			{
+				byte[] image = intent.getByteArrayExtra(IconSelectActivity.EXTRAS_IMAGE);
+				String categoryName = intent.getExtras().get(IconSelectActivity.EXTRAS_CATEGORY_NAME).toString();
+				
+				Category cat = appdb.getCategory(categoryName);
+				cat.setImage(image);
+				
+				appdb.updateImageCat(cat);
+								
+				refresh();
+			}
+			else if (requestCode == REQUEST_PACK)
+			{
+				String packageName = intent.getExtras().get(IconSelectActivity.EXTRAS_PACKAGE_NAME).toString();
+				String categoryName = intent.getExtras().get(IconSelectActivity.EXTRAS_CATEGORY_NAME).toString();
+				
+				Intent intent2 = new Intent(LauncherActivity.this, IconSelectActivity.class);
+				intent2.putExtra(IconSelectActivity.EXTRAS_PACKAGE_NAME, packageName);
+				intent2.putExtra(IconSelectActivity.EXTRAS_CATEGORY_NAME, categoryName);
+				startActivityForResult(intent2, REQUEST_ICON);
+			}
+		}
+	}
+	
 	/**
 	 * Task for creating application thumbnails as needed.
 	 */
@@ -900,8 +1021,23 @@ public class LauncherActivity extends ExpandableListActivity implements
 				convertView = inflater.inflate(R.layout.item_header, parent, false);
 
 			String group = (String) this.getGroup(groupPosition);
-			((TextView) convertView.findViewById(android.R.id.text1)).setText(group);
-
+			//((TextView) convertView.findViewById(android.R.id.text1)).setText(group);
+			
+			TextView groupView = (TextView)convertView.findViewById(android.R.id.text1);
+			groupView.setText(group);
+			
+			if (!group.equals(GROUP_UNKNOWN))
+			{
+				Category cat = appdb.getCategory(group);
+				Drawable image = cat.getImageAsCachedDrawable();
+				
+				if (image != null)
+					groupView.setCompoundDrawablesWithIntrinsicBounds(image, null, null, null);
+			}
+			else
+				groupView.setCompoundDrawablesWithIntrinsicBounds(null, null, null, null);
+				
+			
 			return convertView;
 		}
 

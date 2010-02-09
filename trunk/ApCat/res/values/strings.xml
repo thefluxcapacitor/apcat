@@ -37,4 +37,6 @@
 <string name="msg_data_not_exported">Data could not be exported</string>
 <string name="msg_set_visible_cat">Select visible categories</string>
 <string name="set_visible_cat">Category filter</string>
+<string name="select_image">Select image</string>
+<string name="select_icon_pack">Select image collection</string>
 </resources>
