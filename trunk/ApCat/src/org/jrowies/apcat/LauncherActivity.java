@@ -565,7 +565,8 @@ public class LauncherActivity extends ExpandableListActivity implements
 		@Override
 		public void onPreExecute()
 		{
-			dialog = ProgressDialog.show(LauncherActivity.this, "", LauncherActivity.this.getString(R.string.msg_loading), true);
+			dialog = ProgressDialogFactory.CreateDialog(LauncherActivity.this, LauncherActivity.this.getString(R.string.msg_loading), -1);
+			dialog.show();
 		}
 
 		@Override
@@ -593,178 +594,56 @@ public class LauncherActivity extends ExpandableListActivity implements
 
 					if (type == 0) //group 
 					{
-						String groupName = groupAdapter.getGroup(groupPos).toString();
+						final String groupName = groupAdapter.getGroup(groupPos).toString();
 
 						if (!groupName.equalsIgnoreCase(GROUP_UNKNOWN))
 						{
-							final FrameLayout fl = new FrameLayout(LauncherActivity.this);
-							final RadioGroup radioGroup = new RadioGroup(
-									LauncherActivity.this);
-
-							final RadioButton radioSelectApp = new RadioButton(
-									LauncherActivity.this);
-							radioSelectApp.setText(LauncherActivity.this.getString(R.string.select_applications));
-							radioSelectApp.setTag(groupName);
-							radioSelectApp.setLayoutParams(new LayoutParams(
-									LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT));
-							//radioSelectApp.setChecked(true);//todo
-
-							final RadioButton radioDeleteCat = new RadioButton(
-									LauncherActivity.this);
-							radioDeleteCat.setText(LauncherActivity.this.getString(R.string.remove_category));
-							radioDeleteCat.setTag(groupName);
-							radioDeleteCat.setLayoutParams(new LayoutParams(
-									LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT));
-
-							final RadioButton radioRenameCat = new RadioButton(
-									LauncherActivity.this);
-							radioRenameCat.setText(LauncherActivity.this.getString(R.string.rename_category));
-							radioRenameCat.setTag(groupName);
-							radioRenameCat.setLayoutParams(new LayoutParams(
-									LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT));
+							menu.setHeaderTitle(LauncherActivity.this.getString(R.string.choose_action));
 							
-							final RadioButton radioSelectIconCat = new RadioButton(
-									LauncherActivity.this);
-							radioSelectIconCat.setText(LauncherActivity.this.getString(R.string.select_image));
-							radioSelectIconCat.setTag(groupName);
-							radioSelectIconCat.setLayoutParams(new LayoutParams(
-									LayoutParams.FILL_PARENT, LayoutParams.WRAP_CONTENT));
+							menu.add(LauncherActivity.this.getString(R.string.select_applications)).setOnMenuItemClickListener(
+									new OnMenuItemClickListener()
+									{
+										public boolean onMenuItemClick(MenuItem item)
+										{
+											selectApplicationsForCategory(groupName);
+											return true;
+										}
+									}
+								);
+
+							menu.add(LauncherActivity.this.getString(R.string.remove_category)).setOnMenuItemClickListener(
+									new OnMenuItemClickListener()
+									{
+										public boolean onMenuItemClick(MenuItem item)
+										{
+											deleteCategory(groupName);
+											return true;
+										}
+									}
+								);
+
+							menu.add(LauncherActivity.this.getString(R.string.rename_category)).setOnMenuItemClickListener(
+									new OnMenuItemClickListener()
+									{
+										public boolean onMenuItemClick(MenuItem item)
+										{
+											renameCategory(groupName);
+											return true;
+										}
+									}
+								);
+
+							menu.add(LauncherActivity.this.getString(R.string.select_image)).setOnMenuItemClickListener(
+									new OnMenuItemClickListener()
+									{
+										public boolean onMenuItemClick(MenuItem item)
+										{
+											selectCatIcon(groupName);
+											return true;
+										}
+									}
+								);
 							
-							radioGroup.addView(radioSelectApp);
-							radioGroup.addView(radioDeleteCat);
-							radioGroup.addView(radioRenameCat);
-							radioGroup.addView(radioSelectIconCat);
-
-							radioGroup.setGravity(Gravity.CENTER);
-
-							fl.addView(radioGroup, new FrameLayout.LayoutParams(
-									FrameLayout.LayoutParams.FILL_PARENT,
-									FrameLayout.LayoutParams.WRAP_CONTENT));
-
-							new AlertDialog.Builder(LauncherActivity.this).setView(fl)
-									.setPositiveButton(LauncherActivity.this.getString(R.string.ok),
-											new DialogInterface.OnClickListener()
-											{
-												@Override
-												public void onClick(DialogInterface d, int which)
-												{
-													d.dismiss();
-													try
-													{
-														if (radioSelectApp.isChecked())
-														{
-//															AppSelectActivity.dialog = ProgressDialog.show(LauncherActivity.this, "", 
-//																	LauncherActivity.this.getString(R.string.msg_loading), true);
-															
-															Intent intent = new Intent();
-															
-															intent.setClassName(AppSelectActivity.class.getPackage().getName(),
-																	AppSelectActivity.class.getName());
-															
-															intent.putExtra(
-																	AppSelectActivity.groupNameIntentExtra,
-																	radioSelectApp.getTag().toString());
-															startActivityForResult(intent, ACTIVITY_CREATE);
-														}
-														else if (radioDeleteCat.isChecked())
-														{
-															AlertDialog.Builder builder = new AlertDialog.Builder(
-																	LauncherActivity.this).setTitle(
-																			LauncherActivity.this.getString(R.string.confirmation)).setMessage(
-																	LauncherActivity.this.getString(R.string.msg_remove_category))
-																	.setPositiveButton(LauncherActivity.this.getString(R.string.ok),
-																			new DialogInterface.OnClickListener()
-																			{
-																				@Override
-																				public void onClick(DialogInterface d,
-																						int which)
-																				{
-																					d.dismiss();
-																					appdb.removeCategory(radioDeleteCat
-																							.getTag().toString());
-																					refresh();
-																				}
-																			}).setNegativeButton(LauncherActivity.this.getString(R.string.cancel),
-																			new DialogInterface.OnClickListener()
-																			{
-																				@Override
-																				public void onClick(DialogInterface d,
-																						int which)
-																				{
-																					d.dismiss();
-																				}
-																			});
-															AlertDialog okCancelDialog = builder.create();
-															//okCancelDialog.getButton(AlertDialog.BUTTON_POSITIVE).setTag(radioDeleteCat.getTag().toString());
-															okCancelDialog.show();
-
-														}
-														else if (radioRenameCat.isChecked())
-														{
-															final FrameLayout fl = new FrameLayout(LauncherActivity.this);
-															final EditText input = new EditText(LauncherActivity.this);
-															input.setGravity(Gravity.CENTER);
-
-															fl.addView(input, new FrameLayout.LayoutParams(
-																	FrameLayout.LayoutParams.FILL_PARENT,
-																	FrameLayout.LayoutParams.WRAP_CONTENT));
-
-															input.setText(radioRenameCat.getTag().toString());
-															new AlertDialog.Builder(LauncherActivity.this).setView(fl)
-																	.setTitle(LauncherActivity.this.getString(R.string.rename_category))
-																	.setPositiveButton(LauncherActivity.this.getString(R.string.ok),
-																			new DialogInterface.OnClickListener()
-																			{
-																				@Override
-																				public void onClick(DialogInterface d, int which)
-																				{
-																					final String valor = input.getText().toString();
-
-																					if ((valor != null) && (!valor.equals("")))
-																					{
-																						d.dismiss();
-																						try
-																						{
-																							appdb.renameCategory(radioRenameCat.getTag().toString(), valor);
-																							refresh();
-																						}
-																						catch (Exception e)
-																						{
-																							Log.e(TAG, "", e);
-																						}
-																					}
-																				}
-																			}).setNegativeButton(LauncherActivity.this.getString(R.string.cancel),
-																			new DialogInterface.OnClickListener()
-																			{
-																				@Override
-																				public void onClick(DialogInterface d, int which)
-																				{
-																					d.dismiss();
-																				}
-																			}).create().show();
-														}	
-														else if (radioSelectIconCat.isChecked())
-														{
-															selectCatIcon(radioSelectIconCat.getTag().toString());
-														}
-
-													}
-													catch (Exception e)
-													{
-														Log.e(TAG, "", e);
-													}
-												}
-											}).setNegativeButton(LauncherActivity.this.getString(R.string.cancel),
-											new DialogInterface.OnClickListener()
-											{
-												@Override
-												public void onClick(DialogInterface d, int which)
-												{
-													d.dismiss();
-												}
-											}).create().show();
-
 						}
 					}
 				}
@@ -779,6 +658,95 @@ public class LauncherActivity extends ExpandableListActivity implements
 
 	}
 
+	private void selectApplicationsForCategory(String categoryName)
+	{
+		Intent intent = new Intent();
+		
+		intent.setClassName(AppSelectActivity.class.getPackage().getName(),
+				AppSelectActivity.class.getName());
+		
+		intent.putExtra(AppSelectActivity.groupNameIntentExtra,categoryName);
+		startActivityForResult(intent, ACTIVITY_CREATE);
+	}
+
+	private void deleteCategory(final String categoryName)
+	{
+		AlertDialog.Builder builder = new AlertDialog.Builder(
+				LauncherActivity.this).setTitle(
+						LauncherActivity.this.getString(R.string.confirmation)).setMessage(
+				LauncherActivity.this.getString(R.string.msg_remove_category))
+				.setPositiveButton(LauncherActivity.this.getString(R.string.ok),
+						new DialogInterface.OnClickListener()
+						{
+							@Override
+							public void onClick(DialogInterface d,
+									int which)
+							{
+								d.dismiss();
+								appdb.removeCategory(categoryName);
+								refresh();
+							}
+						}).setNegativeButton(LauncherActivity.this.getString(R.string.cancel),
+						new DialogInterface.OnClickListener()
+						{
+							@Override
+							public void onClick(DialogInterface d,
+									int which)
+							{
+								d.dismiss();
+							}
+						});
+		AlertDialog okCancelDialog = builder.create();
+		//okCancelDialog.getButton(AlertDialog.BUTTON_POSITIVE).setTag(radioDeleteCat.getTag().toString());
+		okCancelDialog.show();
+	}
+	
+	private void renameCategory(final String categoryName)
+	{
+		final FrameLayout fl = new FrameLayout(LauncherActivity.this);
+		final EditText input = new EditText(LauncherActivity.this);
+		input.setGravity(Gravity.CENTER);
+
+		fl.addView(input, new FrameLayout.LayoutParams(
+				FrameLayout.LayoutParams.FILL_PARENT,
+				FrameLayout.LayoutParams.WRAP_CONTENT));
+
+		input.setText(categoryName);
+		new AlertDialog.Builder(LauncherActivity.this).setView(fl)
+				.setTitle(LauncherActivity.this.getString(R.string.rename_category))
+				.setPositiveButton(LauncherActivity.this.getString(R.string.ok),
+						new DialogInterface.OnClickListener()
+						{
+							@Override
+							public void onClick(DialogInterface d, int which)
+							{
+								final String valor = input.getText().toString();
+
+								if ((valor != null) && (!valor.equals("")))
+								{
+									d.dismiss();
+									try
+									{
+										appdb.renameCategory(categoryName, valor);
+										refresh();
+									}
+									catch (Exception e)
+									{
+										Log.e(TAG, "", e);
+									}
+								}
+							}
+						}).setNegativeButton(LauncherActivity.this.getString(R.string.cancel),
+						new DialogInterface.OnClickListener()
+						{
+							@Override
+							public void onClick(DialogInterface d, int which)
+							{
+								d.dismiss();
+							}
+						}).create().show();
+	}
+	
 	public class IconPackInfo
 	{
 		public String packageName;
@@ -788,88 +756,107 @@ public class LauncherActivity extends ExpandableListActivity implements
 	
 	private void selectCatIcon(String categoryName)
 	{
-		//This code adapted from AppsOrganizer
-		//http://code.google.com/p/appsorganizer/source/browse/trunk/AppsOrganizer/src/com/google/code/appsorganizer/chooseicon/IconPackActivity.java
+		final ProgressDialog dialog = ProgressDialogFactory.CreateDialog(this, this.getString(R.string.msg_loading), apps.size());
+		dialog.show();
 		
-		String thisPackageName = getPackageName();
+		final String safeCategoryName = categoryName;
 		
-		final List<IconPackInfo> iconPacks = new ArrayList<IconPackInfo>();
-		
-		for (ResolveInfo p : apps) 
+		new Thread()
 		{
-			String packageName = p.activityInfo.applicationInfo.packageName;
-			if (!packageName.startsWith("com.android") && !thisPackageName.equals(packageName) && p.activityInfo.enabled) 
+			@Override
+			public void run() 
 			{
-				String dir = p.activityInfo.applicationInfo.publicSourceDir;
-				ZipFile z = null;
-				try 
+				//This code adapted from AppsOrganizer
+				//http://code.google.com/p/appsorganizer/source/browse/trunk/AppsOrganizer/src/com/google/code/appsorganizer/chooseicon/IconPackActivity.java
+				
+				String thisPackageName = getPackageName();
+				
+				final List<IconPackInfo> iconPacks = new ArrayList<IconPackInfo>();
+				
+				int count = 0;
+				
+				for (ResolveInfo p : apps) 
 				{
-					z = new ZipFile(dir);
-					Enumeration<? extends ZipEntry> entries = z.entries();
-					while (entries.hasMoreElements()) 
+					count++;
+					dialog.setProgress(count);
+					
+					String packageName = p.activityInfo.applicationInfo.packageName;
+					if (!packageName.startsWith("com.android") && !thisPackageName.equals(packageName) && p.activityInfo.enabled) 
 					{
-						ZipEntry zipEntry = entries.nextElement();
-
-						String name = zipEntry.getName().toLowerCase();
-						if (name.startsWith("assets") && (name.endsWith(".png") || name.endsWith(".jpg")))
-						{
-							IconPackInfo packInfo = new IconPackInfo();
-							packInfo.packageName = dir;
-							packInfo.description = p.activityInfo.applicationInfo.loadLabel(getPackageManager()).toString();
-							
-							Drawable icon = p.activityInfo.loadIcon(pm);
-							packInfo.thumb = Utilities.createIconThumbnail(icon, 32);
-
-							iconPacks.add(packInfo);
-							break;
-						}
-					}
-				} 
-				catch (Throwable e) 
-				{
-					Log.e(TAG, "", e);
-				} 
-				finally 
-				{
-					if (z != null) 
-					{
+						String dir = p.activityInfo.applicationInfo.publicSourceDir;
+						ZipFile z = null;
 						try 
 						{
-							z.close();
+							z = new ZipFile(dir);
+							Enumeration<? extends ZipEntry> entries = z.entries();
+							while (entries.hasMoreElements()) 
+							{
+								ZipEntry zipEntry = entries.nextElement();
+
+								String name = zipEntry.getName().toLowerCase();
+								if (name.startsWith("assets") && (name.endsWith(".png") || name.endsWith(".jpg")))
+								{
+									IconPackInfo packInfo = new IconPackInfo();
+									packInfo.packageName = dir;
+									packInfo.description = p.activityInfo.applicationInfo.loadLabel(getPackageManager()).toString();
+									
+									Drawable icon = p.activityInfo.loadIcon(pm);
+									packInfo.thumb = Utilities.createIconThumbnail(icon, 32);
+
+									iconPacks.add(packInfo);
+									break;
+								}
+							}
 						} 
-						catch (IOException e) 
+						catch (Throwable e) 
 						{
 							Log.e(TAG, "", e);
+						} 
+						finally 
+						{
+							if (z != null) 
+							{
+								try 
+								{
+									z.close();
+								} 
+								catch (IOException e) 
+								{
+									Log.e(TAG, "", e);
+								}
+							}
 						}
 					}
 				}
-			}
-		}
-		
-		final Collator collator = Collator.getInstance();
-		Collections.sort(iconPacks, new Comparator<IconPackInfo>()
-				{
-					public int compare(IconPackInfo object1, IconPackInfo object2)
-					{
-						return collator.compare(object1.description, object2.description);
-					}
-				});
+				
+				final Collator collator = Collator.getInstance();
+				Collections.sort(iconPacks, new Comparator<IconPackInfo>()
+						{
+							public int compare(IconPackInfo object1, IconPackInfo object2)
+							{
+								return collator.compare(object1.description, object2.description);
+							}
+						});
 
-		if (!iconPacks.isEmpty())
-		{
-			Intent intent = new Intent(LauncherActivity.this, IconPackSelectActivity.class);
-			intent.putExtra(IconSelectActivity.EXTRAS_CATEGORY_NAME, categoryName);
-			
-			IconPackSelectActivity.iconPacks = (IconPackInfo[])iconPacks.toArray(new IconPackInfo[iconPacks.size()]); 
-			
-//			Bundle bundle = new Bundle(iconPacks.size());
-//			for (IconPackInfo packInfo : iconPacks)
-//				bundle.putString(packInfo.packageName, packInfo.description);
-//			intent.putExtra(IconPackSelectActivity.EXTRAS_ICON_PACKS, bundle);
-			
-			startActivityForResult(intent, REQUEST_PACK);
-			
-		}
+				if (!iconPacks.isEmpty())
+				{
+					Intent intent = new Intent(LauncherActivity.this, IconPackSelectActivity.class);
+					intent.putExtra(IconSelectActivity.EXTRAS_CATEGORY_NAME, safeCategoryName);
+					
+					IconPackSelectActivity.iconPacks = (IconPackInfo[])iconPacks.toArray(new IconPackInfo[iconPacks.size()]); 
+					
+//					Bundle bundle = new Bundle(iconPacks.size());
+//					for (IconPackInfo packInfo : iconPacks)
+//						bundle.putString(packInfo.packageName, packInfo.description);
+//					intent.putExtra(IconPackSelectActivity.EXTRAS_ICON_PACKS, bundle);
+					
+					startActivityForResult(intent, REQUEST_PACK);
+					
+				}
+				
+				dialog.dismiss();
+			}
+		}.start();
 	}
 	
 	private final int REQUEST_ICON = 1;
@@ -1033,6 +1020,8 @@ public class LauncherActivity extends ExpandableListActivity implements
 				
 				if (image != null)
 					groupView.setCompoundDrawablesWithIntrinsicBounds(image, null, null, null);
+				else
+					groupView.setCompoundDrawablesWithIntrinsicBounds(null, null, null, null);
 			}
 			else
 				groupView.setCompoundDrawablesWithIntrinsicBounds(null, null, null, null);
