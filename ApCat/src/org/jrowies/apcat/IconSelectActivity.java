@@ -11,6 +11,7 @@ import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -19,6 +20,8 @@ import android.graphics.Bitmap.CompressFormat;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -42,9 +45,10 @@ public class IconSelectActivity extends Activity
 		setContentView(R.layout.grid_list);
 		
 		TextView titulo = (TextView) findViewById(R.id.TextView01);
-		titulo.setText(this.getString(R.string.select_image));
+		titulo.setText(IconSelectActivity.this.getString(R.string.select_image));
 
 		drawIcons();
+		
 	}
 
 	private Drawable[] drawablesArray;
@@ -53,30 +57,57 @@ public class IconSelectActivity extends Activity
 	public static final String EXTRAS_IMAGE = "img";
 	public static final String EXTRAS_CATEGORY_NAME = "cn";
 	public static final String EXTRAS_PACKAGE_NAME = "pn";
+
+	private final int THREAD_FINISHED = 0;
+	private ProgressDialog dialog;
 	
+	private final Handler handler = new Handler() 
+	{
+		@Override
+		public void handleMessage(Message msg) 
+		{
+			if (msg.what == THREAD_FINISHED) 
+			{
+				dialog.dismiss();
+				
+				//This code adapted from AppsOrganizer
+				//http://code.google.com/p/appsorganizer/source/browse/trunk/AppsOrganizer/src/com/google/code/appsorganizer/chooseicon/ChooseIconFromPackActivity.java
+				grid.setAdapter(new IconsAdapter());
+				grid.setOnItemClickListener(new AdapterView.OnItemClickListener() 
+				{
+
+					public void onItemClick(AdapterView<?> arg0, View arg1, int pos, long arg3) 
+					{
+						Intent res = new Intent();
+						res.putExtra(EXTRAS_IMAGE, convertToByteArray(((BitmapDrawable) drawablesArray[pos]).getBitmap()));
+						res.putExtra(EXTRAS_CATEGORY_NAME, getIntent().getStringExtra(EXTRAS_CATEGORY_NAME));
+						setResult(RESULT_OK, res);
+						finish();
+					}
+				});
+				
+			}
+		}
+	};
+
 	private void drawIcons()
 	{
-		List<Drawable> drawables = new ArrayList<Drawable>();
-		getDrawables(drawables);
-		drawablesArray = drawables.toArray(new Drawable[drawables.size()]);
-		
 		grid = (GridView)findViewById(R.id.gridView);
-		
-		//This code adapted from AppsOrganizer
-		//http://code.google.com/p/appsorganizer/source/browse/trunk/AppsOrganizer/src/com/google/code/appsorganizer/chooseicon/ChooseIconFromPackActivity.java
-		grid.setAdapter(new IconsAdapter());
-		grid.setOnItemClickListener(new AdapterView.OnItemClickListener() 
-		{
 
-			public void onItemClick(AdapterView<?> arg0, View arg1, int pos, long arg3) 
+		final List<Drawable> drawables = new ArrayList<Drawable>();
+
+		dialog = ProgressDialogFactory.CreateDialog(this, this.getString(R.string.msg_loading), -1);
+		dialog.show();
+		new Thread()
+		{
+			@Override
+			public void run() 
 			{
-				Intent res = new Intent();
-				res.putExtra(EXTRAS_IMAGE, convertToByteArray(((BitmapDrawable) drawablesArray[pos]).getBitmap()));
-				res.putExtra(EXTRAS_CATEGORY_NAME, getIntent().getStringExtra(EXTRAS_CATEGORY_NAME));
-				setResult(RESULT_OK, res);
-				finish();
+				getDrawables(drawables);
+				drawablesArray = drawables.toArray(new Drawable[drawables.size()]);
+				handler.sendEmptyMessage(THREAD_FINISHED);				
 			}
-		});
+		}.start();
 		
 	}
 	

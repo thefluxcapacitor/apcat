@@ -39,4 +39,5 @@
 <string name="set_visible_cat">Category filter</string>
 <string name="select_image">Select image</string>
 <string name="select_icon_pack">Select image collection</string>
+<string name="choose_action">Choose action</string>
 </resources>
