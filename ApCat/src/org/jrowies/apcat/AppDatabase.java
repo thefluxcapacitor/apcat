@@ -31,7 +31,6 @@ import android.content.pm.ResolveInfo;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.graphics.drawable.Drawable;
 
 public class AppDatabase extends SQLiteOpenHelper
 {
@@ -101,21 +100,21 @@ public class AppDatabase extends SQLiteOpenHelper
 				String packageName = c.getString(COL_PACKAGE), 
 					categoryName = c.getString(COL_CATEGORY);
 				
-				byte[] image = c.getBlob(COL_IMAGE);
+				byte[] image = c.getBlob(COL_IMAGE); 
 
 				Package p = new Package(packageName);
 				p.setImage(image);
 				
 				for (ResolveInfo i : infoList)
 				{
-					if (i.activityInfo.name.equals(packageName))
+					if (Utilities.getResolveInfoFullName(i).equals(packageName))
 					{
 						p.setResolveInfo(i, LauncherActivity.getPm());
 						break;
 					}
 				}
 				
-				if ((categoryName == "") || (categoryName == null))
+				if ((categoryName == "") || (categoryName == null)) 
 					categoriesDict.get(Category.CAT_UNASSIGNED_NAME).addPackage(p);
 				else
 					categoriesDict.get(categoryName).addPackage(p); 
@@ -233,7 +232,7 @@ public class AppDatabase extends SQLiteOpenHelper
 			cache.invalidateCache();
 		}
 		
-		reloadApplicationData(db);
+		reloadApplicationData(db, DB_VERSION);
 		
 		synchronized (cache)
 		{
@@ -243,10 +242,10 @@ public class AppDatabase extends SQLiteOpenHelper
 
 	public void reloadApplicationData()
 	{
-		reloadApplicationData(null);
+		reloadApplicationData(null, DB_VERSION);
 	}
 	
-	public void reloadApplicationData(SQLiteDatabase db)
+	public void reloadApplicationData(SQLiteDatabase db, int currentDataVersion)
 	{
 		if (db == null)
 			db = getWritableDatabase();
@@ -263,24 +262,38 @@ public class AppDatabase extends SQLiteOpenHelper
 			for (ResolveInfo i : apps)
 			{
 				ContentValues values = new ContentValues();
-				byte[] image = Utilities.drawableToBytes(Utilities.getResolveInfoIcon(i, pm)/*imageDrawable*/, LauncherActivity.iconSize);
+				byte[] image = Utilities.drawableToBytes(Utilities.getResolveInfoIcon(i, pm), LauncherActivity.iconSize);
 				values.put(FIELD_APP_IMAGE, image);
 				values.put(FIELD_APP_DESCRIP, Utilities.getResolveInfoTitle(i, pm).toString());
 
-				String packageName = Utilities.getResolveInfoFullName(i);
+				String key; 
+
+				Package p;
+				if (currentDataVersion == 1)
+				{
+					//in version 1 only package name was stored, without activity info. so we need to update FIELD_APP_PACKAGE 
+					key = Utilities.getResolveInfoPackageName(i);
+					p = auxPackagesDict.get(key);
+					if (p != null)
+						values.put(FIELD_APP_PACKAGE, Utilities.getResolveInfoFullName(i));
+				}
+				else
+				{
+					key = Utilities.getResolveInfoFullName(i);
+					p = auxPackagesDict.get(key);
+				}
 				
-				Package p = auxPackagesDict.get(packageName);
 				if (p != null)
 				{
-					auxPackagesDict.remove(packageName);
+					auxPackagesDict.remove(key);
 					
 					String[] params = new String[1];
-					params[0] = packageName;
+					params[0] = key;
 					db.update(TABLE_APP, values, FIELD_APP_PACKAGE + " = ?", params);
 				}
 				else
 				{
-					values.put(FIELD_APP_PACKAGE, packageName);
+					values.put(FIELD_APP_PACKAGE, Utilities.getResolveInfoFullName(i));
 					db.insert(TABLE_APP, null, values);
 				}
 			}
@@ -338,13 +351,15 @@ public class AppDatabase extends SQLiteOpenHelper
 		synchronized (cache)
 		{
 			cache.invalidateCache();
+			cache.assertCache(db);
 		}
 		
-		reloadApplicationData(db);
+		reloadApplicationData(db, oldVersion);
 		
 		synchronized (cache)
 		{
-			cache.assertCache();
+			cache.invalidateCache();
+			cache.assertCache(db);
 		}
 	}
 
@@ -398,7 +413,7 @@ public class AppDatabase extends SQLiteOpenHelper
 		return cache.categoriesDict.get(categoryName);
 	}
 	
-	public void importData(List<Category> data)
+	public void importData(List<Category> data, int importDataVersion)
 	{
 		SQLiteDatabase db = this.getWritableDatabase();
 		try
@@ -424,7 +439,7 @@ public class AppDatabase extends SQLiteOpenHelper
 
 		cache.assertCache();
 		
-		reloadApplicationData(db);
+		reloadApplicationData(db, importDataVersion);
 		
 		synchronized (cache)
 		{

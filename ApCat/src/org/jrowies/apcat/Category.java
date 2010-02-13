@@ -13,7 +13,7 @@ public class Category extends ImageItem
 		return unassignedCat;
 	}
 	
-	public static String CAT_UNASSIGNED_NAME;
+	final public static String CAT_UNASSIGNED_NAME = "$CAT_UNASSIGNED$";
 
 	private boolean unassigned = false;
 	

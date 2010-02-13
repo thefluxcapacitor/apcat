@@ -79,7 +79,8 @@ public class LauncherActivity extends ExpandableListActivity implements
 	private int expandState = STATE_UNKNOWN;
 	private final int REQUEST_ICON = 1;
 	private final int REQUEST_PACK = 2;
-
+  private String CAT_UNASSIGNED_VISIBLE_NAME; 
+  	
 	public class IconPackInfo
 	{
 		public String packageName;
@@ -103,21 +104,19 @@ public class LauncherActivity extends ExpandableListActivity implements
 	{
 		super.onCreate(savedInstanceState);
 
-		Category.CAT_UNASSIGNED_NAME = this.getString(R.string.uncategorized);
+		CAT_UNASSIGNED_VISIBLE_NAME = this.getString(R.string.uncategorized);
 		
 		this.inflater = (LayoutInflater) this
 				.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
 
 		// TODO: remember open/closed status when coming back later
-		// try latching onto new package events
 
 		iconSize = (int) getResources().getDimension(android.R.dimen.app_icon_size);
 		
 		pm = getPackageManager();
 		appdb = new AppDatabase(LauncherActivity.this);
-		appdb.getReadableDatabase(); //to force initialization
+		appdb.getReadableDatabase(); //to force upgrade of database if application was upgraded
 		
-		// allow focus inside of rows to select children
 		getExpandableListView().setItemsCanFocus(true);
 	}
 
@@ -274,6 +273,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 	
 	private void newCategory()
 	{
+		final Context context = this;
 		final FrameLayout fl = new FrameLayout(LauncherActivity.this);
 		final EditText input = new EditText(LauncherActivity.this);
 		input.setGravity(Gravity.CENTER);
@@ -296,10 +296,18 @@ public class LauncherActivity extends ExpandableListActivity implements
 								if ((valor != null) && (!valor.equals("")))
 								{
 									d.dismiss();
+
 									try
 									{
-										getAppdb().addCategory(new Category(valor));
-										refresh();
+										if (getAppdb().getCategory(valor) == null) 
+										{
+											getAppdb().addCategory(new Category(valor));
+											refresh();
+										}
+										else
+										{
+											popUp(context, String.format(LauncherActivity.this.getString(R.string.msg_category_exists), valor));
+										}
 									}
 									catch (Exception e)
 									{
@@ -482,7 +490,10 @@ public class LauncherActivity extends ExpandableListActivity implements
 				{
 					public int compare(Package object1, Package object2)
 					{
-						return collator.compare(object1.getTitle(), object2.getTitle());
+//						if ((object1.getTitle() == null) || (object2.getTitle() == null))
+//							return 0;
+//						else
+							return collator.compare(object1.getTitle(), object2.getTitle());
 					}
 				});
 			}
@@ -882,7 +893,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 	{
 
 		private HashMap<Category, ArrayList<Package>> entryMap;
-		private List<Category> groupNames;
+		private List<Category> categories;
 
 		private int columns = -1;
 
@@ -890,10 +901,10 @@ public class LauncherActivity extends ExpandableListActivity implements
 		{
 
 			this.entryMap = entryMap;
-			this.groupNames = new ArrayList<Category>(entryMap.keySet());
+			this.categories = new ArrayList<Category>(entryMap.keySet());
 
 			final Collator collatorCat = Collator.getInstance();
-			Collections.sort(this.groupNames, new Comparator<Category>()
+			Collections.sort(this.categories, new Comparator<Category>()
 			{
 				public int compare(Category object1, Category object2)
 				{
@@ -920,12 +931,12 @@ public class LauncherActivity extends ExpandableListActivity implements
 
 		public Object getGroup(int groupPosition)
 		{
-			return this.groupNames.get(groupPosition);
+			return this.categories.get(groupPosition);
 		}
 
 		public int getGroupCount()
 		{
-			return this.groupNames.size();
+			return this.categories.size();
 		}
 
 		public long getGroupId(int groupPosition)
@@ -939,15 +950,19 @@ public class LauncherActivity extends ExpandableListActivity implements
 			if (convertView == null)
 				convertView = inflater.inflate(R.layout.item_header, parent, false);
 
-			Category group = (Category) this.getGroup(groupPosition);
+			Category category = (Category) this.getGroup(groupPosition);
 			//((TextView) convertView.findViewById(android.R.id.text1)).setText(group);
 			
 			TextView groupView = (TextView)convertView.findViewById(android.R.id.text1);
-			groupView.setText(group.getName());
 			
-			if (!group.isUnassigned())
+			if (category.isUnassigned())
+				groupView.setText(CAT_UNASSIGNED_VISIBLE_NAME);
+			else
+				groupView.setText(category.getName());
+			
+			if (!category.isUnassigned())
 			{
-				Drawable image = group.getImageAsCachedDrawable();
+				Drawable image = category.getImageAsCachedDrawable();
 				
 				if (image != null)
 					groupView.setCompoundDrawablesWithIntrinsicBounds(image, null, null, null);
@@ -976,7 +991,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 		{
 			// wrap children items into rows using column count
 			//int actualCount = entryMap.get(groupNames[groupPosition]).size();
-			int actualCount = entryMap.get(groupNames.get(groupPosition)).size();
+			int actualCount = entryMap.get(categories.get(groupPosition)).size();
 			return (actualCount + (columns - 1)) / columns;
 		}
 
@@ -1002,7 +1017,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 				}
 			}
 
-			ArrayList<Package> actualChildren = entryMap.get(groupNames.get(groupPosition));
+			ArrayList<Package> actualChildren = entryMap.get(categories.get(groupPosition));
 			int start = childPosition * columns, end = (childPosition + 1) * columns;
 
 			for (int i = start; i < end; i++)
