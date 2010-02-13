@@ -25,7 +25,7 @@ public class CategorySelectActivity extends ScrollListSelectActivity
 		CheckBox chkBox;
 
 		List<Category> categories = new ArrayList<Category>();
-		LauncherActivity.appdb.getCategories(categories);
+		LauncherActivity.getAppdb().getCategories(categories);
 		
 		final Collator collator = Collator.getInstance();
 		Collections.sort(categories, new Comparator<Category>()
@@ -39,13 +39,16 @@ public class CategorySelectActivity extends ScrollListSelectActivity
 		chkList = new ArrayList<CheckBox>();
 		for (Category category : categories)
 		{
-			chkBox = new CheckBox(this);
-			chkBox.setText(category.getName());
-			chkBox.setTag(category);
-			chkBox.setChecked(category.getVisible());
-			chkBox.setCompoundDrawables(null, null, category.getImageAsCachedDrawable(), null);
-			chkList.add(chkBox);
-			table.addView(chkBox);
+			if (!category.isUnassigned())
+			{
+				chkBox = new CheckBox(this);
+				chkBox.setText(category.getName());
+				chkBox.setTag(category);
+				chkBox.setChecked(category.getVisible());
+				chkBox.setCompoundDrawablesWithIntrinsicBounds(null, null, category.getImageAsCachedDrawable(), null);
+				chkList.add(chkBox);
+				table.addView(chkBox);
+			}
 		}
 		
 		scrollView.addView(table);
@@ -58,7 +61,7 @@ public class CategorySelectActivity extends ScrollListSelectActivity
 		{
 			Category cat = (Category) chk.getTag();
 			cat.setVisible(chk.isChecked());
-			LauncherActivity.appdb.updateVisibleCat(cat);
+			LauncherActivity.getAppdb().updateVisibleCat(cat);
 		}
 	}
 

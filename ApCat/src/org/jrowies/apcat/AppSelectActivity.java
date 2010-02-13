@@ -25,21 +25,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.jsharkey.grouphome.Utilities;
-import com.google.android.photostream.UserTask;
-
-import android.app.Activity;
-import android.content.pm.ResolveInfo;
-import android.graphics.drawable.Drawable;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.view.View;
 import android.view.MenuItem.OnMenuItemClickListener;
-import android.view.View.OnClickListener;
-import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.ScrollView;
 import android.widget.TableLayout;
@@ -47,25 +37,13 @@ import android.widget.TextView;
 
 public class AppSelectActivity extends ScrollListSelectActivity
 {
-	class PackageInfo
-	{
-		CharSequence packageName;
-		CharSequence packageDescription;
-		ResolveInfo resolveInfo;
-		Drawable icon;
-	}
-
 	private String groupName;
 
 	private List<CheckBox> chkList;
 
-	private List<String> packagesInCategory;
-	
 	private Map<String, Boolean> packageSelStates;
 
 	public static String groupNameIntentExtra = "org.jrowies.apcat.AppSelectActivity.GroupName";
-
-	private int iconSize = -1;
 
 	private void updatePackageSelStates()
 	{
@@ -74,8 +52,8 @@ public class AppSelectActivity extends ScrollListSelectActivity
 		
 		for (CheckBox chk : chkList)
 		{
-			PackageInfo pkgInfo = (PackageInfo) chk.getTag();
-			packageSelStates.put(pkgInfo.packageName.toString(), chk.isChecked());
+			Package p = (Package) chk.getTag();
+			packageSelStates.put(p.getPackageName(), chk.isChecked());
 		}
 	}
 	
@@ -84,8 +62,8 @@ public class AppSelectActivity extends ScrollListSelectActivity
 		for (CheckBox chk : chkList)
 		{
 			chk.setChecked(selected);
-			PackageInfo pkgInfo = (PackageInfo) chk.getTag();
-			packageSelStates.put(pkgInfo.packageName.toString(), chk.isChecked());
+			Package p = (Package) chk.getTag();
+			packageSelStates.put(p.getPackageName(), chk.isChecked());
 		}
 	}
 	
@@ -104,46 +82,15 @@ public class AppSelectActivity extends ScrollListSelectActivity
 
 			chkList = new ArrayList<CheckBox>();
 
-			packagesInCategory = new ArrayList<String>();
-			try
-			{
-				//si solo muestro las que no tienen categoria, no es necesario llenar la lista
-				if (!showUncategorizedOnly) 
-				{
-					LauncherActivity.appdb.getPackagesForCategory(packagesInCategory,
-						groupName);
-				}
-			}
-			catch (Exception e)
-			{
-				Log.e(LauncherActivity.TAG, "", e);
-			}
-
-			List<PackageInfo> pkgInfoList = new ArrayList<PackageInfo>();
-
-			for (ResolveInfo info : LauncherActivity.apps)
-			{
-
-				CharSequence packageDescription = info.loadLabel(LauncherActivity.pm);
-				CharSequence packageName = info.activityInfo.name;
-				if (packageDescription == null)
-					packageName = packageDescription;
-
-				PackageInfo pkgInfo = new PackageInfo();
-				pkgInfo.packageDescription = packageDescription;
-				pkgInfo.packageName = packageName;
-				pkgInfo.resolveInfo = info;
-
-				pkgInfoList.add(pkgInfo);
-			}
-
+			List<Package> packages = new ArrayList<Package>();
+			LauncherActivity.getAppdb().getPackages(packages);
+			
 			final Collator collator = Collator.getInstance();
-			Collections.sort(pkgInfoList, new Comparator<PackageInfo>()
+			Collections.sort(packages, new Comparator<Package>()
 			{
-				public int compare(PackageInfo object1, PackageInfo object2)
+				public int compare(Package object1, Package object2)
 				{
-					return collator.compare(object1.packageDescription,
-							object2.packageDescription);
+					return collator.compare(object1.getTitle(), object2.getTitle());
 				}
 			});
 
@@ -154,67 +101,52 @@ public class AppSelectActivity extends ScrollListSelectActivity
 				firstPass = true;
 			}
 
-			for (PackageInfo pkgInfo : pkgInfoList)
+			for (Package p : packages)
 			{
-				String currentCategoryStr = null;
-				try
-				{
-					currentCategoryStr = LauncherActivity.appdb.getCategoryForPackage(pkgInfo.packageName.toString());
-				}
-				catch (Exception e)
-				{
-					Log.e(LauncherActivity.TAG, "", e);
-				}
-				
-				boolean addApp = !showUncategorizedOnly || (currentCategoryStr == null || currentCategoryStr.equals(""));
+				boolean addApp = !showUncategorizedOnly || p.getCategory().isUnassigned(); 
 				
 				if (addApp)
 				{
 					chkBox = new CheckBox(this);
-					chkBox.setText(pkgInfo.packageDescription);
-					chkBox.setTag(pkgInfo);
+					chkBox.setText(p.getTitle());
+					chkBox.setTag(p);
 					
 					if (!firstPass)
 					{
 						//si entra en drawApplications porque se esta aplicando un filtro, firstPass es false 
 						//entonces mantengo el checked segun la informacion de packageSelStates
-						chkBox.setChecked(packageSelStates.get(pkgInfo.packageName));
+						chkBox.setChecked(packageSelStates.get(p.getPackageName()));
 					}
 					else
 					{
-						Boolean inCategory = packagesInCategory.contains(pkgInfo.packageName);
-						packageSelStates.put(pkgInfo.packageName.toString(), inCategory);
+						Boolean inCategory = p.getCategory().getName().equals(groupName);
+						packageSelStates.put(p.getPackageName(), inCategory);
 						
 						//pongo el checked solo si el package pertenece a la categoria
 						chkBox.setChecked(inCategory);
 					}
 
-					if (pkgInfo.icon != null)
-					{
-						chkBox.setCompoundDrawablesWithIntrinsicBounds(null, null,
-								pkgInfo.icon, null);
-					}
-					else
-					{
-						chkBox.setCompoundDrawablesWithIntrinsicBounds(null, null, null, null);
-						new ThumbTask().execute(pkgInfo, chkBox);
-					}
+					chkBox.setCompoundDrawablesWithIntrinsicBounds(null, null, p.getImageAsCachedDrawable(), null);
+					
+//					if (pkgInfo.icon != null)
+//					{
+//						chkBox.setCompoundDrawablesWithIntrinsicBounds(null, null,
+//								pkgInfo.icon, null);
+//					}
+//					else
+//					{
+//						chkBox.setCompoundDrawablesWithIntrinsicBounds(null, null, null, null);
+//						new ThumbTask().execute(pkgInfo, chkBox);
+//					}
 
-					//chkBox.setCompoundDrawables(null, null, pkgInfo.icon, null);
 					table.addView(chkBox);
 					
-					if (currentCategoryStr != null && !currentCategoryStr.equals(""))
+					if (!p.getCategory().isUnassigned())
 					{
 						TextView currentCategory = new TextView(this);
 						//currentCategory.setBackgroundColor(Color.BLUE);
-						currentCategory.setText(currentCategoryStr + "   ");//todo: hacerlo mas "elegante"
+						currentCategory.setText(p.getCategory().getName() + "   ");//todo: hacerlo mas "elegante"
 						currentCategory.setGravity(Gravity.RIGHT);
-						
-						/*LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(
-			          LinearLayout.LayoutParams.FILL_PARENT,
-			          LinearLayout.LayoutParams.WRAP_CONTENT);
-								layoutParams.setMargins(0, 0, 50, 0);
-						currentCategory.setLayoutParams(layoutParams);*/
 						
 						table.addView(currentCategory);
 					}
@@ -235,30 +167,30 @@ public class AppSelectActivity extends ScrollListSelectActivity
 		}
 	}
 	
-	private class ThumbTask extends UserTask<Object, Void, Object[]>
-	{
-		public Object[] doInBackground(Object... params)
-		{
-			PackageInfo info = (PackageInfo) params[0];
-
-			// create actual thumbnail and pass along to gui thread
-			Drawable icon = info.resolveInfo.loadIcon(LauncherActivity.pm);
-			info.icon = Utilities.createIconThumbnail(icon, iconSize);
-			return params;
-		}
-
-		@Override
-		public void onPostExecute(Object... params)
-		{
-			PackageInfo info = (PackageInfo) params[0];
-			CheckBox chkBox = (CheckBox) params[1];
-
-			// dont bother updating if target has been recycled
-			//todo revisar: if(!info.equals(textView.getTag())) return;
-			chkBox.setCompoundDrawablesWithIntrinsicBounds(null, null, info.icon,
-					null);
-		}
-	}
+//	private class ThumbTask extends UserTask<Object, Void, Object[]>
+//	{
+//		public Object[] doInBackground(Object... params)
+//		{
+//			PackageInfo info = (PackageInfo) params[0];
+//
+//			// create actual thumbnail and pass along to gui thread
+//			Drawable icon = info.resolveInfo.loadIcon(LauncherActivity.getPm());
+//			info.icon = Utilities.createIconThumbnail(icon, iconSize);
+//			return params;
+//		}
+//
+//		@Override
+//		public void onPostExecute(Object... params)
+//		{
+//			PackageInfo info = (PackageInfo) params[0];
+//			CheckBox chkBox = (CheckBox) params[1];
+//
+//			// dont bother updating if target has been recycled
+//			//todo revisar: if(!info.equals(textView.getTag())) return;
+//			chkBox.setCompoundDrawablesWithIntrinsicBounds(null, null, info.icon,
+//					null);
+//		}
+//	}
 
 	public boolean onCreateOptionsMenu(Menu menu)
 	{
@@ -312,19 +244,17 @@ public class AppSelectActivity extends ScrollListSelectActivity
 	{
 		for (CheckBox chk : chkList)
 		{
-			PackageInfo pkgInfo = (PackageInfo) chk.getTag();
+			Package p = (Package) chk.getTag();
 
 			if (chk.isChecked()
-					&& !packagesInCategory.contains(pkgInfo.packageName.toString()))
+					&& !p.getCategory().getName().equals(groupName))
 			{
-				LauncherActivity.appdb.addToCategory(groupName, pkgInfo.packageName
-						.toString(), pkgInfo.packageDescription.toString());
+				LauncherActivity.getAppdb().assignPackageToCategory(p.getPackageName(), groupName); 
 			}
 			else if (!chk.isChecked()
-					&& packagesInCategory.contains(pkgInfo.packageName.toString()))
+					&& p.getCategory().getName().equals(groupName))
 			{
-				LauncherActivity.appdb.removeFromCategory(groupName,
-						pkgInfo.packageName.toString());
+				LauncherActivity.getAppdb().unassignPackageFromCategory(p.getPackageName());
 			}
 		}
 	}
@@ -333,7 +263,6 @@ public class AppSelectActivity extends ScrollListSelectActivity
 	protected void createMethod(Bundle savedInstanceState, ScrollView scrollView)
 	{
 		groupName = this.getIntent().getExtras().getString(groupNameIntentExtra);
-		iconSize = (int) getResources().getDimension(android.R.dimen.app_icon_size);
 		
 		drawApplications(false);
 	}

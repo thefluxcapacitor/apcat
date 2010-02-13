@@ -27,7 +27,7 @@
 <string name="details">Ver detalles</string>
 <string name="uninstall">Desinstalar</string>
 <string name="remove_from_category">Quitar de la categoría</string>
-<string name="select_applications_of">Seleccionar aplicaciones de %s</string>
+<string name="select_applications_of">Seleccionar aplicaciones de: %s</string>
 <string name="show_all">Mostrar todas</string>
 <string name="no_category">Sin categoría asignada</string>
 <string name="select_all">Seleccionar todas</string>
@@ -39,4 +39,7 @@
 <string name="select_image">Seleccionar imagen</string>
 <string name="select_icon_pack">Seleccionar colección de imágenes</string>
 <string name="choose_action">Elegir acción</string>
+<string name="msg_category_exists">La categoría %s ya existe</string>
+<string name="reload_applications">Recargar aplicaciones</string>
+<string name="select_image_title">Seleccionar imagen para: %s</string>
 </resources>

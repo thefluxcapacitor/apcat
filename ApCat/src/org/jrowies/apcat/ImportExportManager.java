@@ -3,13 +3,11 @@ package org.jrowies.apcat;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -24,19 +22,13 @@ import org.json.JSONObject;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
-import android.graphics.Bitmap.CompressFormat;
 import android.graphics.BitmapFactory;
+import android.graphics.Bitmap.CompressFormat;
 import android.os.Environment;
 import android.util.Log;
 
 public class ImportExportManager
 {
-	public class PackageInfo
-	{
-		String packageName;
-		String packageDescription;
-	}
-	
 	private final int VERSION = 2;
 	private final String VERSIONKEY = "version";
 	private final String CATEGORIESKEY = "categories";
@@ -49,21 +41,16 @@ public class ImportExportManager
 	private final String SETTINGS_FOLDER = "ApCatSettings";
 	private final String NO_IMAGE = "no_image";
 	
-	private Map<Category, List<String>> data;
+	private List<Category> managerData;
 	
 	public ImportExportManager()
 	{
-		data = new HashMap<Category, List<String>>();
+		managerData = new ArrayList<Category>();
 	}
 	
   public void addCategory(Category category)
   {
-  	data.put(category, new ArrayList<String>());
-  }
-  
-  public void addPackageToCategory(Category category, String packageName)
-  {
-  	data.get(category).add(packageName);
+  	managerData.add(category);
   }
   
   private String fileName = null;
@@ -78,21 +65,24 @@ public class ImportExportManager
   	
   	JSONObject rootData = new JSONObject();
   	JSONArray arrayCategories = new JSONArray();
-  	
-  	for (Entry<Category, List<String>> entry : data.entrySet())
+
+  	for (Category c : managerData)
   	{
+  		if (c.isUnassigned())
+  			continue;
+  		
   		try
 			{
   			JSONObject categoryItem = new JSONObject();
 
-  			categoryItem.put(NAMEKEY, entry.getKey().getName());
-  			categoryItem.put(VISIBLEKEY, entry.getKey().getVisible());
+  			categoryItem.put(NAMEKEY, c.getName());
+  			categoryItem.put(VISIBLEKEY, c.getVisible());
   			
-  			byte[] imgBytes = entry.getKey().getImage();
+  			byte[] imgBytes = c.getImage();
   			if (imgBytes != null)
   			{
 	  			Bitmap bitmap = BitmapFactory.decodeByteArray(imgBytes, 0, imgBytes.length);
-	  			String imageFileName = Integer.toString(entry.getKey().getName().hashCode()) + ".png";
+	  			String imageFileName = Integer.toString(c.getName().hashCode()) + ".png";
 	  			images.put(imageFileName, bitmap);
 	  			
 	  			categoryItem.put(IMAGEKEY, imageFileName);
@@ -101,8 +91,8 @@ public class ImportExportManager
   				categoryItem.put(IMAGEKEY, NO_IMAGE);
 				
 				JSONArray arrayPackages = new JSONArray();
-				for (String packageName : entry.getValue())
-					arrayPackages.put(packageName);
+				for (Package p : c.getPackagesReadOnly())
+					arrayPackages.put(p.getPackageName());
 				categoryItem.put(PACKAGESKEY, arrayPackages);
 				
   			arrayCategories.put(categoryItem);
@@ -183,12 +173,10 @@ public class ImportExportManager
 		}
 	}
   
-  private List<ResolveInfo> appsList; 
   private PackageManager pm;
   
-  public boolean Import(List<ResolveInfo> appsList, PackageManager pm, AppDatabase appdb)
+  public boolean Import(PackageManager pm, AppDatabase appdb)
   {
-  	this.appsList = appsList;
   	this.pm = pm;
   	
   	boolean ok = false;
@@ -227,7 +215,7 @@ public class ImportExportManager
 			
 			if (!target.equals(""))
 			{
-				Map<Category, List<PackageInfo>> categories = new HashMap<Category, List<PackageInfo>>();
+				List<Category> categories = new ArrayList<Category>();
 				JSONObject data = new JSONObject(target.toString());
 				
 				if (data.has(VERSIONKEY))
@@ -263,19 +251,21 @@ public class ImportExportManager
 		return ok;
   }
 
-	private void parseJSONDataVersion1(JSONObject data, Map<Category, List<PackageInfo>> categories)
+	@SuppressWarnings("unchecked")
+	private void parseJSONDataVersion1(JSONObject data, List<Category> categories)
 			throws JSONException
 	{
+		List<ResolveInfo> infoList = Utilities.getResolveInfoList(pm);
+		
 		for(Iterator keys = data.keys(); keys.hasNext(); ) 
 		{
 			String key = keys.next().toString();
 			Category cat = new Category(key);
 			
-			List<PackageInfo> packagesInCategory = new ArrayList<PackageInfo>();
 			JSONArray packages = data.getJSONArray(key);
 			for (int i = 0 ; i < packages.length() ; i++)
 			{
-				for (Iterator<ResolveInfo> appIterator = appsList.iterator(); appIterator.hasNext(); )
+				for (Iterator<ResolveInfo> appIterator = infoList.iterator(); appIterator.hasNext(); )
 				{
 					ResolveInfo rInfo = appIterator.next();
 					String name = rInfo.activityInfo.packageName;
@@ -283,18 +273,19 @@ public class ImportExportManager
 
 					if (name.equals(packages.get(i).toString()))
 					{
-						addPackage(packagesInCategory, rInfo, correctName);	
+						Package p = new Package(correctName); //only set package name as all packages will be full updated after import
+						cat.addPackage(p);
+						
 						break;
 					}
 				}
 			}
-			
-			categories.put(cat, packagesInCategory);
-			
+		
+			categories.add(cat);
 		}
 	}
 
-	private void parseJSONDataVersion2(JSONObject data, Map<Category, List<PackageInfo>> categories, String pathImages)
+	private void parseJSONDataVersion2(JSONObject data, List<Category> categories, String pathImages)
 			throws JSONException
 	{
 		JSONArray categoriesArray = data.getJSONArray(CATEGORIESKEY);
@@ -318,38 +309,14 @@ public class ImportExportManager
 			}
 			
 			JSONArray packagesArray = categoryData.getJSONArray(PACKAGESKEY);
-			List<PackageInfo> packagesInCategory = new ArrayList<PackageInfo>();
 			for (int j = 0 ; j < packagesArray.length() ; j++)
 			{
-				for (Iterator<ResolveInfo> appIterator = appsList.iterator(); appIterator.hasNext(); )
-				{
-					ResolveInfo rInfo = appIterator.next();
-					String name = rInfo.activityInfo.name;
-
-					if (name.equals(packagesArray.getString(j)))
-					{
-						addPackage(packagesInCategory, rInfo, name);	
-						break;
-					}
-				}
-				
+				Package p = new Package(packagesArray.getString(j));
+				cat.addPackage(p); //only set package name as all packages will be full updated after import
 			}
 			
-			categories.put(cat, packagesInCategory);
+			categories.add(cat);
 		}
-	}
-
-	private void addPackage(List<PackageInfo> packagesInCategory,
-			ResolveInfo rInfo, String name)
-	{
-		String desc = rInfo.loadLabel(pm).toString();
-		if (desc == null)
-			desc = name;
-
-		PackageInfo packageInfo = new PackageInfo();
-		packageInfo.packageName = name;
-		packageInfo.packageDescription = desc;
-		packagesInCategory.add(packageInfo);
 	}
 	
 }

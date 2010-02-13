@@ -44,8 +44,9 @@ public class IconSelectActivity extends Activity
 
 		setContentView(R.layout.grid_list);
 		
+		String categoryName = getIntent().getStringExtra(EXTRAS_CATEGORY_NAME);
 		TextView titulo = (TextView) findViewById(R.id.TextView01);
-		titulo.setText(IconSelectActivity.this.getString(R.string.select_image));
+		titulo.setText(String.format(IconSelectActivity.this.getString(R.string.select_image_title), categoryName));
 
 		drawIcons();
 		
@@ -79,7 +80,7 @@ public class IconSelectActivity extends Activity
 					public void onItemClick(AdapterView<?> arg0, View arg1, int pos, long arg3) 
 					{
 						Intent res = new Intent();
-						res.putExtra(EXTRAS_IMAGE, convertToByteArray(((BitmapDrawable) drawablesArray[pos]).getBitmap()));
+						res.putExtra(EXTRAS_IMAGE, Utilities.convertToByteArray(((BitmapDrawable) drawablesArray[pos]).getBitmap(), ICON_CAT_SIZE));
 						res.putExtra(EXTRAS_CATEGORY_NAME, getIntent().getStringExtra(EXTRAS_CATEGORY_NAME));
 						setResult(RESULT_OK, res);
 						finish();
@@ -111,36 +112,7 @@ public class IconSelectActivity extends Activity
 		
 	}
 	
-	private final int ICON_CAT_SIZE = 32;
-	
-	//This code adapted from AppsOrganizer
-	//http://code.google.com/p/appsorganizer/source/browse/trunk/AppsOrganizer/src/com/google/code/appsorganizer/chooseicon/SelectAppDialog.java
-	public byte[] convertToByteArray(Bitmap bm) 
-	{
-		Bitmap bitmap = getScaledImage(bm, ICON_CAT_SIZE);
-		ByteArrayOutputStream os = new ByteArrayOutputStream();
-		bitmap.compress(CompressFormat.PNG, 100, os);
-		return os.toByteArray();
-	}
-
-	//This code adapted from AppsOrganizer
-	//http://code.google.com/p/appsorganizer/source/browse/trunk/AppsOrganizer/src/com/google/code/appsorganizer/chooseicon/SelectAppDialog.java
-	private Bitmap getScaledImage(Bitmap bitmap, int size) 
-	{
-		int width = bitmap.getWidth();
-		int height = bitmap.getHeight();
-
-		if ((size == width) && (size == height))
-			return bitmap;
-		
-		float coefWidth = ((float) size) / width;
-		float coefHeight = ((float) size) / height;
-
-		Matrix matrix = new Matrix();
-		matrix.postScale(coefWidth, coefHeight);
-
-		return Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, true);
-	}
+	public static final int ICON_CAT_SIZE = 32;
 	
 	//This code adapted from AppsOrganizer
 	//http://code.google.com/p/appsorganizer/source/browse/trunk/AppsOrganizer/src/com/google/code/appsorganizer/chooseicon/ChooseIconFromPackActivity.java
