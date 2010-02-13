@@ -218,9 +218,11 @@ public class ImportExportManager
 				List<Category> categories = new ArrayList<Category>();
 				JSONObject data = new JSONObject(target.toString());
 				
+				int version = 1;
+				
 				if (data.has(VERSIONKEY))
 				{
-					int version = data.getInt(VERSIONKEY);
+					version = data.getInt(VERSIONKEY);
 					if (version == 2)
 						parseJSONDataVersion2(data, categories, pathImages);
 					else
@@ -229,7 +231,7 @@ public class ImportExportManager
 				else
 					parseJSONDataVersion1(data, categories);
 
-				appdb.importData(categories);
+				appdb.importData(categories, version);
 				
 				ok = true;
 				
