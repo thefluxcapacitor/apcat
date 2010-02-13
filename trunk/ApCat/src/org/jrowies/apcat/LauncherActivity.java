@@ -26,13 +26,9 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-
-import org.jsharkey.grouphome.Utilities;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -59,14 +55,11 @@ import android.view.ViewGroup;
 import android.view.MenuItem.OnMenuItemClickListener;
 import android.view.View.OnClickListener;
 import android.view.View.OnCreateContextMenuListener;
-import android.view.ViewGroup.LayoutParams;
 import android.widget.BaseExpandableListAdapter;
 import android.widget.EditText;
 import android.widget.ExpandableListAdapter;
 import android.widget.ExpandableListView;
 import android.widget.FrameLayout;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -75,31 +68,42 @@ import com.google.android.photostream.UserTask;
 public class LauncherActivity extends ExpandableListActivity implements
 		OnCreateContextMenuListener, OnClickListener
 {
+	private static final int ACTIVITY_CREATE = 0;
+	private LayoutInflater inflater = null;
+	public static int iconSize = -1;
+	private static PackageManager pm = null;
+	private static AppDatabase appdb = null;
+	private MenuItem force = null;
+	private final static int STATE_UNKNOWN = 1, STATE_ALL_EXPAND = 2,
+			STATE_ALL_COLLAP = 3;
+	private int expandState = STATE_UNKNOWN;
+	private final int REQUEST_ICON = 1;
+	private final int REQUEST_PACK = 2;
+
+	public class IconPackInfo
+	{
+		public String packageName;
+		public String description;
+		public Drawable thumb;
+	}
+	
 	public static final String TAG = LauncherActivity.class.toString();
 	
-	private static final int ACTIVITY_CREATE = 0;
-
-	class EntryInfo
+	public static PackageManager getPm()
 	{
-		ResolveInfo resolveInfo;
-		CharSequence title;
-		Drawable thumb;
+		return pm;
 	}
-
-	private LayoutInflater inflater = null;
-	public static PackageManager pm = null;
-	public static AppDatabase appdb = null;
-
-	public String GROUP_UNKNOWN;
-	private int iconSize = -1;
-
+	
+	public static AppDatabase getAppdb()
+	{
+		return appdb;
+	}
+	
 	public void onCreate(Bundle savedInstanceState)
 	{
 		super.onCreate(savedInstanceState);
 
-		GROUP_UNKNOWN = this.getString(R.string.uncategorized);
-		
-		//setContentView(R.layout.act_launch);
+		Category.CAT_UNASSIGNED_NAME = this.getString(R.string.uncategorized);
 		
 		this.inflater = (LayoutInflater) this
 				.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
@@ -107,14 +111,14 @@ public class LauncherActivity extends ExpandableListActivity implements
 		// TODO: remember open/closed status when coming back later
 		// try latching onto new package events
 
+		iconSize = (int) getResources().getDimension(android.R.dimen.app_icon_size);
+		
 		pm = getPackageManager();
 		appdb = new AppDatabase(LauncherActivity.this);
-
+		appdb.getReadableDatabase(); //to force initialization
+		
 		// allow focus inside of rows to select children
 		getExpandableListView().setItemsCanFocus(true);
-
-		iconSize = (int) getResources().getDimension(android.R.dimen.app_icon_size);
-
 	}
 
 	public void onStart()
@@ -133,15 +137,8 @@ public class LauncherActivity extends ExpandableListActivity implements
 	public void onDestroy()
 	{
 		super.onDestroy();
-		appdb.close();
+		getAppdb().close();
 	}
-
-	private MenuItem force = null;
-
-	private final static int STATE_UNKNOWN = 1, STATE_ALL_EXPAND = 2,
-			STATE_ALL_COLLAP = 3;
-
-	private int expandState = STATE_UNKNOWN;
 
 	public boolean onCreateOptionsMenu(Menu menu)
 	{
@@ -153,87 +150,27 @@ public class LauncherActivity extends ExpandableListActivity implements
 		{
 			public boolean onMenuItemClick(MenuItem item)
 			{
-
-				final FrameLayout fl = new FrameLayout(LauncherActivity.this);
-				final EditText input = new EditText(LauncherActivity.this);
-				input.setGravity(Gravity.CENTER);
-
-				fl.addView(input, new FrameLayout.LayoutParams(
-						FrameLayout.LayoutParams.FILL_PARENT,
-						FrameLayout.LayoutParams.WRAP_CONTENT));
-
-				input.setText("");
-				new AlertDialog.Builder(LauncherActivity.this).setView(fl)
-						.setTitle(LauncherActivity.this.getString(R.string.add_category))
-						.setPositiveButton(LauncherActivity.this.getString(R.string.ok),
-								new DialogInterface.OnClickListener()
-								{
-									@Override
-									public void onClick(DialogInterface d, int which)
-									{
-										final String valor = input.getText().toString();
-
-										if ((valor != null) && (!valor.equals("")))
-										{
-											d.dismiss();
-											try
-											{
-												appdb.addCategory(new Category(valor));
-												refresh();
-											}
-											catch (Exception e)
-											{
-												Log.e(TAG, "", e);
-											}
-										}
-									}
-								}).setNegativeButton(LauncherActivity.this.getString(R.string.cancel),
-								new DialogInterface.OnClickListener()
-								{
-									@Override
-									public void onClick(DialogInterface d, int which)
-									{
-										d.dismiss();
-									}
-								}).create().show();
-
+				newCategory();
 				return true;
 			}
+
 		});
 
 		force = menu.add(this.getString(R.string.expand_all)).setIcon(android.R.drawable.ic_menu_share)
-				.setOnMenuItemClickListener(new OnMenuItemClickListener()
+		.setOnMenuItemClickListener(
+				new OnMenuItemClickListener()
 				{
 					public boolean onMenuItemClick(MenuItem item)
 					{
-						ExpandableListView listView = LauncherActivity.this
-								.getExpandableListView();
-						ExpandableListAdapter adapter = LauncherActivity.this
-								.getExpandableListAdapter();
-						switch (expandState)
-						{
-							case STATE_UNKNOWN:
-							case STATE_ALL_COLLAP:
-								// when unknown or collapsed, we force all open
-								for (int i = 0; i < adapter.getGroupCount(); i++)
-									listView.expandGroup(i);
-								expandState = STATE_ALL_EXPAND;
-								break;
-							case STATE_ALL_EXPAND:
-								// when expanded, we force all closed
-								for (int i = 0; i < adapter.getGroupCount(); i++)
-									listView.collapseGroup(i);
-								expandState = STATE_ALL_COLLAP;
-								break;
-						}
-
+						expandCollapse();
 						return true;
 					}
 				});
 
 		menu.add(LauncherActivity.this.getString(R.string.refresh))
 		.setIcon(R.drawable.ic_menu_refresh)
-				.setOnMenuItemClickListener(new OnMenuItemClickListener()
+		.setOnMenuItemClickListener(
+				new OnMenuItemClickListener()
 				{
 					public boolean onMenuItemClick(MenuItem item)
 					{
@@ -277,6 +214,18 @@ public class LauncherActivity extends ExpandableListActivity implements
 						return true;
 					}
 				});
+
+		menu.add(LauncherActivity.this.getString(R.string.reload_applications))
+		.setIcon(android.R.drawable.ic_menu_rotate)
+		.setOnMenuItemClickListener(
+				new OnMenuItemClickListener()
+				{
+					public boolean onMenuItemClick(MenuItem item)
+					{
+						reloadApplications();
+						return true;
+					}
+				});
 		
 		menu.add(LauncherActivity.this.getString(R.string.reset))
 		.setIcon(android.R.drawable.ic_menu_delete)
@@ -293,6 +242,82 @@ public class LauncherActivity extends ExpandableListActivity implements
 		return true;
 	}
 
+	private void reloadApplications()
+	{
+		getAppdb().reloadApplicationData();
+		refresh();
+	}
+	
+	private void expandCollapse()
+	{
+		ExpandableListView listView = LauncherActivity.this
+				.getExpandableListView();
+		ExpandableListAdapter adapter = LauncherActivity.this
+				.getExpandableListAdapter();
+		switch (expandState)
+		{
+			case STATE_UNKNOWN:
+			case STATE_ALL_COLLAP:
+				// when unknown or collapsed, we force all open
+				for (int i = 0; i < adapter.getGroupCount(); i++)
+					listView.expandGroup(i);
+				expandState = STATE_ALL_EXPAND;
+				break;
+			case STATE_ALL_EXPAND:
+				// when expanded, we force all closed
+				for (int i = 0; i < adapter.getGroupCount(); i++)
+					listView.collapseGroup(i);
+				expandState = STATE_ALL_COLLAP;
+				break;
+		}
+	}
+	
+	private void newCategory()
+	{
+		final FrameLayout fl = new FrameLayout(LauncherActivity.this);
+		final EditText input = new EditText(LauncherActivity.this);
+		input.setGravity(Gravity.CENTER);
+
+		fl.addView(input, new FrameLayout.LayoutParams(
+				FrameLayout.LayoutParams.FILL_PARENT,
+				FrameLayout.LayoutParams.WRAP_CONTENT));
+
+		input.setText("");
+		new AlertDialog.Builder(LauncherActivity.this).setView(fl)
+				.setTitle(LauncherActivity.this.getString(R.string.add_category))
+				.setPositiveButton(LauncherActivity.this.getString(R.string.ok),
+						new DialogInterface.OnClickListener()
+						{
+							@Override
+							public void onClick(DialogInterface d, int which)
+							{
+								final String valor = input.getText().toString();
+
+								if ((valor != null) && (!valor.equals("")))
+								{
+									d.dismiss();
+									try
+									{
+										getAppdb().addCategory(new Category(valor));
+										refresh();
+									}
+									catch (Exception e)
+									{
+										Log.e(TAG, "", e);
+									}
+								}
+							}
+						}).setNegativeButton(LauncherActivity.this.getString(R.string.cancel),
+						new DialogInterface.OnClickListener()
+						{
+							@Override
+							public void onClick(DialogInterface d, int which)
+							{
+								d.dismiss();
+							}
+						}).create().show();
+	}
+	
 	private void seleccionarCategorias()
 	{
 		Intent intent = new Intent();
@@ -316,8 +341,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 				{
 					d.dismiss();
 					
-//					appdb.deleteAllMappings();
-					appdb.recreateDataBase();
+					getAppdb().recreateDataBase();
 					setListAdapter(null);
 					new ProcessTask().execute();
 				}
@@ -338,22 +362,13 @@ public class LauncherActivity extends ExpandableListActivity implements
 					{
 						d.dismiss();
 						
-						List<String> packagesInCategory = new ArrayList<String>();
-
 						List<Category> categories = new ArrayList<Category>();
-						appdb.getCategories(categories);
+						getAppdb().getCategories(categories);
 
 						ImportExportManager manager = new ImportExportManager();
 
 						for (Category cat : categories)
-						{
-							packagesInCategory.clear();
-							appdb.getPackagesForCategory(packagesInCategory, cat.getName());
-
 							manager.addCategory(cat);
-							for (String pkg : packagesInCategory)
-								manager.addPackageToCategory(cat, pkg);
-						}
 
 						boolean ok = manager.Export();
 						
@@ -392,7 +407,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 
 						ImportExportManager manager = new ImportExportManager();
 						
-						boolean ok = manager.Import(apps, pm, appdb);
+						boolean ok = manager.Import(getPm(), getAppdb());
 						if (ok)
 						{
 							refresh();
@@ -418,6 +433,8 @@ public class LauncherActivity extends ExpandableListActivity implements
 	
 	private void refresh()
 	{
+		getAppdb().reloadCache();
+		
 		setListAdapter(null);
 		
 		new ProcessTask().execute();
@@ -439,124 +456,40 @@ public class LauncherActivity extends ExpandableListActivity implements
 	}
 
 	/**
-	 * Helper function to correctly add categorized apps to entryMap. Will
-	 * create internal ArrayList if doesn't exist for given category.
-	 */
-	private void addMappingHelper(Map<String, List<EntryInfo>> entryMap,
-			EntryInfo entry, String categoryName)
-	{
-		if (!entryMap.containsKey(categoryName))
-			entryMap.put(categoryName, new ArrayList<EntryInfo>());
-
-		if (entry != null)
-			entryMap.get(categoryName).add(entry);
-	}
-
-	public static List<ResolveInfo> apps;
-
-	/**
 	 * Task that reads all applications, sorting into categories as needed.
 	 */
 	private class ProcessTask extends UserTask<Void, Void, GroupAdapter>
 	{
+		@SuppressWarnings("unchecked")
 		public GroupAdapter doInBackground(Void... params)
 		{
+			ArrayList<Category> categories = new ArrayList<Category>();
+			getAppdb().getCategories(categories);
 
-			// final map used to store category mappings
-			Map<String, List<EntryInfo>> entryMap = new HashMap<String, List<EntryInfo>>();
-
-			// search for all launchable apps
-			Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
-			mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
-
-			apps = pm.queryIntentActivities(mainIntent, 0);
-
-			List<EntryInfo> passone = new LinkedList<EntryInfo>(), passtwo = new LinkedList<EntryInfo>();
-
-			for (ResolveInfo info : apps)
+			HashMap<Category, ArrayList<Package>> entryMap = new HashMap<Category, ArrayList<Package>>();
+			
+			for (Category c : categories)
 			{
-				EntryInfo entry = new EntryInfo();
-
-				// load details about this app
-				entry.resolveInfo = info;
-				entry.title = info.loadLabel(pm);
-				if (entry.title == null)
-					entry.title = info.activityInfo.name;
-
-				passone.add(entry);
+				if (c.getVisible())
+					entryMap.put(c, (ArrayList)c.getPackagesReadOnly());
 			}
-
-			Log.d(TAG, String.format("entering first pass with %d unresolved",
-					passone.size()));
-
-			List<Category> categories = new ArrayList<Category>();
-			appdb.getCategories(categories);
-
-			for (Category category : categories)
-			{
-				if (category.getVisible())
-					addMappingHelper(entryMap, null, category.getName());
-			}
-
-			for (EntryInfo entry : passone)
-			{
-				String packageName = entry.resolveInfo.activityInfo.name;
-				try
-				{
-					String categoryName = appdb.getCategoryForPackage(packageName);
-					if (categoryName != null)
-					{
-						if (appdb.getCategory(categoryName).getVisible())
-						{
-							addMappingHelper(entryMap, entry, categoryName);
-	
-							Log.d(TAG, String.format(
-									"found categoryName=%s for packageName=%s", categoryName,
-									packageName));
-						}
-					}
-					else
-					{
-						passtwo.add(entry);
-					}
-				}
-				catch (Exception e)
-				{
-					Log.e(TAG, "Problem while trying to categorize app", e);
-				}
-
-			}
-
-			Log.d(TAG, String.format("entering second pass with %d unresolved",
-					passtwo.size()));
-
-			if (passtwo.size() > 0)
-			{
-				for (EntryInfo entry : passtwo)
-				{
-					addMappingHelper(entryMap, entry, GROUP_UNKNOWN);
-				}
-			}
-
-			// sort each category of apps 
+			
+			// sort apps of each category 
 			final Collator collator = Collator.getInstance();
-			for (String key : entryMap.keySet())
+			for (Category key : entryMap.keySet())
 			{
-				Collections.sort(entryMap.get(key), new Comparator<EntryInfo>()
+				Collections.sort(entryMap.get(key), new Comparator<Package>()
 				{
-					public int compare(EntryInfo object1, EntryInfo object2)
+					public int compare(Package object1, Package object2)
 					{
-						return collator.compare(object1.title, object2.title);
+						return collator.compare(object1.getTitle(), object2.getTitle());
 					}
 				});
 			}
 
-			// free any cache memory
-			//appdb.clearMappingCache();//todo: si lo elimino, para que tengo el cache?
-
-			// now that app tree is built, pass along to adapter
 			groupAdapter = new GroupAdapter(entryMap);
 			return groupAdapter;
+			
 		}
 
 		public GroupAdapter groupAdapter;
@@ -594,9 +527,10 @@ public class LauncherActivity extends ExpandableListActivity implements
 
 					if (type == 0) //group 
 					{
-						final String groupName = groupAdapter.getGroup(groupPos).toString();
-
-						if (!groupName.equalsIgnoreCase(GROUP_UNKNOWN))
+						Category category = (Category)groupAdapter.getGroup(groupPos);
+						final String groupName = category.getName();
+						
+						if (!category.isUnassigned())
 						{
 							menu.setHeaderTitle(LauncherActivity.this.getString(R.string.choose_action));
 							
@@ -665,7 +599,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 		intent.setClassName(AppSelectActivity.class.getPackage().getName(),
 				AppSelectActivity.class.getName());
 		
-		intent.putExtra(AppSelectActivity.groupNameIntentExtra,categoryName);
+		intent.putExtra(AppSelectActivity.groupNameIntentExtra, categoryName);
 		startActivityForResult(intent, ACTIVITY_CREATE);
 	}
 
@@ -683,7 +617,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 									int which)
 							{
 								d.dismiss();
-								appdb.removeCategory(categoryName);
+								getAppdb().removeCategory(categoryName);
 								refresh();
 							}
 						}).setNegativeButton(LauncherActivity.this.getString(R.string.cancel),
@@ -697,12 +631,13 @@ public class LauncherActivity extends ExpandableListActivity implements
 							}
 						});
 		AlertDialog okCancelDialog = builder.create();
-		//okCancelDialog.getButton(AlertDialog.BUTTON_POSITIVE).setTag(radioDeleteCat.getTag().toString());
 		okCancelDialog.show();
 	}
 	
 	private void renameCategory(final String categoryName)
 	{
+		final Context context = this;
+		
 		final FrameLayout fl = new FrameLayout(LauncherActivity.this);
 		final EditText input = new EditText(LauncherActivity.this);
 		input.setGravity(Gravity.CENTER);
@@ -722,13 +657,20 @@ public class LauncherActivity extends ExpandableListActivity implements
 							{
 								final String valor = input.getText().toString();
 
-								if ((valor != null) && (!valor.equals("")))
+								if ((valor != null) && (!valor.equals("")) && (!valor.equals(categoryName)))
 								{
 									d.dismiss();
 									try
 									{
-										appdb.renameCategory(categoryName, valor);
-										refresh();
+										if (getAppdb().getCategory(valor) == null) 
+										{
+											getAppdb().renameCategory(categoryName, valor);
+											refresh();
+										}
+										else
+										{
+											popUp(context, String.format(LauncherActivity.this.getString(R.string.msg_category_exists), valor));
+										}
 									}
 									catch (Exception e)
 									{
@@ -747,15 +689,9 @@ public class LauncherActivity extends ExpandableListActivity implements
 						}).create().show();
 	}
 	
-	public class IconPackInfo
-	{
-		public String packageName;
-		public String description;
-		public Drawable thumb;
-	}
-	
 	private void selectCatIcon(String categoryName)
 	{
+		final List<ResolveInfo> apps = Utilities.getResolveInfoList(getPm());
 		final ProgressDialog dialog = ProgressDialogFactory.CreateDialog(this, this.getString(R.string.msg_loading), apps.size());
 		dialog.show();
 		
@@ -800,8 +736,8 @@ public class LauncherActivity extends ExpandableListActivity implements
 									packInfo.packageName = dir;
 									packInfo.description = p.activityInfo.applicationInfo.loadLabel(getPackageManager()).toString();
 									
-									Drawable icon = p.activityInfo.loadIcon(pm);
-									packInfo.thumb = Utilities.createIconThumbnail(icon, 32);
+									Drawable icon = p.activityInfo.loadIcon(getPm());
+									packInfo.thumb = Utilities.createIconThumbnail(icon, IconSelectActivity.ICON_CAT_SIZE);
 
 									iconPacks.add(packInfo);
 									break;
@@ -859,9 +795,6 @@ public class LauncherActivity extends ExpandableListActivity implements
 		}.start();
 	}
 	
-	private final int REQUEST_ICON = 1;
-	private final int REQUEST_PACK = 2;
-	
 	public void onActivityResult(int requestCode, int resultCode, Intent intent) 
 	{
 		if (resultCode == Activity.RESULT_OK) 
@@ -871,10 +804,10 @@ public class LauncherActivity extends ExpandableListActivity implements
 				byte[] image = intent.getByteArrayExtra(IconSelectActivity.EXTRAS_IMAGE);
 				String categoryName = intent.getExtras().get(IconSelectActivity.EXTRAS_CATEGORY_NAME).toString();
 				
-				Category cat = appdb.getCategory(categoryName);
+				Category cat = getAppdb().getCategory(categoryName);
 				cat.setImage(image);
 				
-				appdb.updateImageCat(cat);
+				getAppdb().updateImageCat(cat);
 								
 				refresh();
 			}
@@ -891,44 +824,45 @@ public class LauncherActivity extends ExpandableListActivity implements
 		}
 	}
 	
-	/**
-	 * Task for creating application thumbnails as needed.
-	 */
-	private class ThumbTask extends UserTask<Object, Void, Object[]>
-	{
-		public Object[] doInBackground(Object... params)
-		{
-			EntryInfo info = (EntryInfo) params[0];
-
-			// create actual thumbnail and pass along to gui thread
-			Drawable icon = info.resolveInfo.loadIcon(pm);
-			info.thumb = Utilities.createIconThumbnail(icon, iconSize);
-			
-			return params;
-		}
-
-		@Override
-		public void onPostExecute(Object... params)
-		{
-			EntryInfo info = (EntryInfo) params[0];
-			TextView textView = (TextView) params[1];
-
-			// dont bother updating if target has been recycled
-			if (!info.equals(textView.getTag()))
-				return;
-			textView.setCompoundDrawablesWithIntrinsicBounds(null, info.thumb, null,
-					null);
-		}
-	}
+//	/**
+//	 * Task for creating application thumbnails as needed.
+//	 */
+//	private class ThumbTask extends UserTask<Object, Void, Object[]>
+//	{
+//		public Object[] doInBackground(Object... params)
+//		{
+//			EntryInfo info = (EntryInfo) params[0];
+//
+//			if (info.thumb == null)
+//			{
+//				// create actual thumbnail and pass along to gui thread
+//				Drawable icon = info.resolveInfo.loadIcon(getPm());
+//				info.thumb = Utilities.createIconThumbnail(icon, iconSize);
+//			}
+//			
+//			return params;
+//		}
+//
+//		@Override
+//		public void onPostExecute(Object... params)
+//		{
+//			EntryInfo info = (EntryInfo) params[0];
+//			TextView textView = (TextView) params[1];
+//
+//			// dont bother updating if target has been recycled
+//			if (!info.equals(textView.getTag()))
+//				return;
+//			
+//			textView.setCompoundDrawablesWithIntrinsicBounds(null, info.thumb, null, null);
+//		}
+//	}
 
 	/**
 	 * Force columns shown in adapter based on orientation.
 	 */
 	private void updateColumns(GroupAdapter adapter, Configuration config)
 	{
-		adapter
-				.setColumns((config.orientation == Configuration.ORIENTATION_PORTRAIT) ? 4
-						: 6);
+		adapter.setColumns((config.orientation == Configuration.ORIENTATION_PORTRAIT) ? 4 : 6);
 	}
 
 	public void onConfigurationChanged(Configuration newConfig)
@@ -947,28 +881,28 @@ public class LauncherActivity extends ExpandableListActivity implements
 	public class GroupAdapter extends BaseExpandableListAdapter
 	{
 
-		private Map<String, List<EntryInfo>> entryMap;
-		private List<String> groupNames;
+		private HashMap<Category, ArrayList<Package>> entryMap;
+		private List<Category> groupNames;
 
 		private int columns = -1;
 
-		public GroupAdapter(Map<String, List<EntryInfo>> entryMap)
+		public GroupAdapter(HashMap<Category, ArrayList<Package>> entryMap)
 		{
 
 			this.entryMap = entryMap;
-			this.groupNames = new ArrayList<String>(entryMap.keySet());
+			this.groupNames = new ArrayList<Category>(entryMap.keySet());
 
 			final Collator collatorCat = Collator.getInstance();
-			Collections.sort(this.groupNames, new Comparator<String>()
+			Collections.sort(this.groupNames, new Comparator<Category>()
 			{
-				public int compare(String object1, String object2)
+				public int compare(Category object1, Category object2)
 				{
-					if (object1.equals(GROUP_UNKNOWN))
+					if (object1.isUnassigned())
 						return 1;
-					else if (object2.equals(GROUP_UNKNOWN))
+					else if (object2.isUnassigned())
 						return -1;
 					else
-						return collatorCat.compare(object1, object2);
+						return collatorCat.compare(object1.getName(), object2.getName());
 				}
 			});
 
@@ -986,13 +920,11 @@ public class LauncherActivity extends ExpandableListActivity implements
 
 		public Object getGroup(int groupPosition)
 		{
-			//return this.groupNames[groupPosition];
 			return this.groupNames.get(groupPosition);
 		}
 
 		public int getGroupCount()
 		{
-			//return this.groupNames.length;
 			return this.groupNames.size();
 		}
 
@@ -1007,16 +939,15 @@ public class LauncherActivity extends ExpandableListActivity implements
 			if (convertView == null)
 				convertView = inflater.inflate(R.layout.item_header, parent, false);
 
-			String group = (String) this.getGroup(groupPosition);
+			Category group = (Category) this.getGroup(groupPosition);
 			//((TextView) convertView.findViewById(android.R.id.text1)).setText(group);
 			
 			TextView groupView = (TextView)convertView.findViewById(android.R.id.text1);
-			groupView.setText(group);
+			groupView.setText(group.getName());
 			
-			if (!group.equals(GROUP_UNKNOWN))
+			if (!group.isUnassigned())
 			{
-				Category cat = appdb.getCategory(group);
-				Drawable image = cat.getImageAsCachedDrawable();
+				Drawable image = group.getImageAsCachedDrawable();
 				
 				if (image != null)
 					groupView.setCompoundDrawablesWithIntrinsicBounds(image, null, null, null);
@@ -1071,9 +1002,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 				}
 			}
 
-			//List<EntryInfo> actualChildren = entryMap.get(groupNames[groupPosition]);
-			List<EntryInfo> actualChildren = entryMap.get(groupNames
-					.get(groupPosition));
+			ArrayList<Package> actualChildren = entryMap.get(groupNames.get(groupPosition));
 			int start = childPosition * columns, end = (childPosition + 1) * columns;
 
 			for (int i = start; i < end; i++)
@@ -1083,24 +1012,16 @@ public class LauncherActivity extends ExpandableListActivity implements
 				if (i < actualChildren.size())
 				{
 					// fill with actual child info if available
-					final EntryInfo info = actualChildren.get(i);
-					textView.setText(info.title);
-					textView.setTag(info);
+					final Package p = actualChildren.get(i);
+					textView.setText(p.getTitle());
+					textView.setTag(p);
 					textView.setVisibility(View.VISIBLE);
 
-					// generate thumbnail in usertask if not already cached
-					Log.d(TAG, String.format("Drawing icon for: %s", info.title));
-					if (info.thumb != null)
-					{
-						textView.setCompoundDrawablesWithIntrinsicBounds(null, info.thumb,
-								null, null);
-					}
-					else
-					{
-						textView.setCompoundDrawablesWithIntrinsicBounds(null, null, null,
-								null);
-						new ThumbTask().execute(info, textView);
-					}
+					//Log.d(TAG, String.format("Drawing icon for: %s", info.getTitle()));
+					
+					Drawable image = p.getImageAsCachedDrawable();
+					if (image != null)
+						textView.setCompoundDrawablesWithIntrinsicBounds(null, image, null, null);
 
 				}
 				else
@@ -1128,13 +1049,14 @@ public class LauncherActivity extends ExpandableListActivity implements
 	public void onCreateContextMenu(ContextMenu menu, View v,
 			ContextMenu.ContextMenuInfo menuInfo)
 	{
-		if (!(v.getTag() instanceof EntryInfo))
+		if (!(v.getTag() instanceof Package))
 			return;
-		EntryInfo info = (EntryInfo) v.getTag();
 
-		final String packageName = info.resolveInfo.activityInfo.applicationInfo.packageName;
+		Package p = (Package) v.getTag();
+
+		final String packageName = Utilities.getResolveInfoPackageName(p.getResolveInfo());
 		
-		menu.setHeaderTitle(info.title);
+		menu.setHeaderTitle(p.getTitle());
 
 		Intent detailsIntent = new Intent();
 		detailsIntent.setClassName("com.android.settings",
@@ -1149,16 +1071,16 @@ public class LauncherActivity extends ExpandableListActivity implements
 		
 		try
 		{
-			final String packageName2 = info.resolveInfo.activityInfo.name;
-			final String categoryName = appdb.getCategoryForPackage(packageName2);
-			if (categoryName != null && !categoryName.equals(""))
+			final String packageName2 = p.getPackageName();
+			final Category category = getAppdb().getCategoryForPackage(packageName2);
+			if (!category.isUnassigned())
 			{
 				menu.add(LauncherActivity.this.getString(R.string.remove_from_category))
 				.setOnMenuItemClickListener(new OnMenuItemClickListener()
 				{
 					public boolean onMenuItemClick(MenuItem item)
 					{
-						appdb.removeFromCategory(categoryName, packageName2);
+						getAppdb().unassignPackageFromCategory(packageName2);
 						refresh();
 						return true;
 					}
@@ -1173,18 +1095,18 @@ public class LauncherActivity extends ExpandableListActivity implements
 
 	public void onClick(View v)
 	{
-		if (!(v.getTag() instanceof EntryInfo))
+		if (!(v.getTag() instanceof Package))
 			return;
-		EntryInfo info = (EntryInfo) v.getTag();
+		
+		Package p = (Package) v.getTag();
 
 		// build actual intent for launching app
 		Intent launch = new Intent(Intent.ACTION_MAIN);
 		launch.addCategory(Intent.CATEGORY_LAUNCHER);
 		launch.setComponent(new ComponentName(
-				info.resolveInfo.activityInfo.applicationInfo.packageName,
-				info.resolveInfo.activityInfo.name));
-		launch.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-				| Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+				Utilities.getResolveInfoPackageName(p.getResolveInfo()),
+				p.getPackageName()));
+		launch.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
 
 		try
 		{
@@ -1197,6 +1119,12 @@ public class LauncherActivity extends ExpandableListActivity implements
 			Log.e(TAG, "Problem trying to launch application", e);
 		}
 
+	}
+	
+	public static void popUp(Context context, String message)
+	{
+		Toast t = Toast.makeText(context, message, Toast.LENGTH_LONG);
+		t.show();
 	}
 
 //	@Override

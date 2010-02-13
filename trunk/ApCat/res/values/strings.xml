@@ -28,7 +28,7 @@
 	<string name="details">See details</string>
 	<string name="uninstall">Uninstall</string>
 	<string name="remove_from_category">Remove from category</string>
-	<string name="select_applications_of">Select applications for %s</string>
+	<string name="select_applications_of">Select applications for: %s</string>
 	<string name="show_all">Show all</string>
 	<string name="no_category">No category assigned</string>
 	<string name="select_all">Select all</string>
@@ -40,4 +40,7 @@
 <string name="select_image">Select image</string>
 <string name="select_icon_pack">Select image collection</string>
 <string name="choose_action">Choose action</string>
+<string name="msg_category_exists">Category %s already exists</string>
+<string name="reload_applications">Reload applications</string>
+<string name="select_image_title">Select image for: %s</string>
 </resources>

@@ -1,57 +1,55 @@
 package org.jrowies.apcat;
 
-import android.graphics.BitmapFactory;
-import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.Drawable;
+import java.util.ArrayList;
+import java.util.List;
 
 
-public class Category
+public class Category extends ImageItem
 {
+	public static Category createUnassignedCategory()
+	{
+		Category unassignedCat = new Category(Category.CAT_UNASSIGNED_NAME);
+		unassignedCat.setUnassigned(true);
+		return unassignedCat;
+	}
+	
+	public static String CAT_UNASSIGNED_NAME;
+
+	private boolean unassigned = false;
+	
+	public void setUnassigned(boolean unassigned)
+	{
+		this.unassigned = unassigned;
+	}
+
+	public boolean isUnassigned()
+	{
+		return unassigned;
+	}
+	
 	private String name;
 	
 	public String getName()
 	{
-		return name;
+		if (unassigned)
+			return CAT_UNASSIGNED_NAME;
+		else
+			return name;
 	}
 	
 	private Boolean visible;
 
 	public Boolean getVisible()
 	{
-		return visible;
+		if (unassigned)
+			return true;
+		else
+			return visible;
 	}
 	
 	public void setVisible(Boolean value)
 	{
 		visible = value;
-	}
-	
-  private byte[] image;
-
-  public byte[] getImage()
-	{
-		return image;
-	}
-  
-	public void setImage(byte[] value)
-	{
-		imageDrawable = null;
-		image = value;
-	}
-	
-	private Drawable imageDrawable = null;
-	
-	public Drawable getImageAsCachedDrawable()
-	{
-		if (imageDrawable == null)
-		{
-			if (image != null)
-			{
-				imageDrawable = new BitmapDrawable(BitmapFactory.decodeByteArray(image, 0, image.length));
-			}
-		}
-		
-		return imageDrawable;
 	}
 	
 	public Category(String name, Boolean visible)
@@ -79,4 +77,32 @@ public class Category
 		
 		return objCat.getName().equals(this.getName());
 	}
+	
+	private final List<Package> packages = new ArrayList<Package>();
+	
+	public List<Package> getPackagesReadOnly()
+	{
+		return new ArrayList<Package>(packages);
+	}
+	
+	public void addPackage(Package packageObj)
+	{
+		packageObj.setCategory(this);
+		packages.add(packageObj);
+	}
+
+	public void removePackage(Package packageObj)
+	{
+		packages.remove(packageObj);
+	}
+	
+	public Package getPackage(String packageName)
+	{
+		for (Package p : packages)
+			if (p.getPackageName().equals(packageName))
+				return p;
+		
+		return null;
+	}
+
 }

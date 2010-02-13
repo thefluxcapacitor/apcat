@@ -20,155 +20,302 @@
 package org.jrowies.apcat;
 
 import java.util.HashMap;
-import java.util.Map;
 import java.util.List;
-import java.util.ArrayList;
+import java.util.Map;
 import java.util.Map.Entry;
 
 import android.content.ContentValues;
 import android.content.Context;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.util.Log;
+import android.graphics.drawable.Drawable;
 
 public class AppDatabase extends SQLiteOpenHelper
 {
+	private final static int DB_VERSION = 2;
 
-	private Object mappingLock = new Object();
-	private Object categoriesLock = new Object();
-	private boolean mappingValidCache = false;
-	private boolean categoriesValidCache = false;
-	private Map<String, String> packageMappingCache = new HashMap<String, String>();
-	private List<Category> categoriesCache = new ArrayList<Category>();
+	private class DbCache
+	{
+		private final Map<String, Category> categoriesDict = new HashMap<String, Category>();
+		private final Map<String, Package> packagesDict = new HashMap<String, Package>();
+		private boolean validCache = false;
+		
+		private void invalidateCache()
+		{
+			categoriesDict.clear();
+			packagesDict.clear();
+			validCache = false;
+		}
+		
+		private void assertCache()
+		{
+			assertCache(null);
+		}
 
-	public static final String TAG = AppDatabase.class.toString();
+		private void assertCache(SQLiteDatabase db)
+		{
+			if (validCache)
+				return;
 
-	public final static String DB_NAME = "apps";
-	public final static int DB_VERSION = 2;
+			List<ResolveInfo> infoList = Utilities.getResolveInfoList(LauncherActivity.getPm());
 
-	public final static String TABLE_CAT = "cat";
-	//public final static String FIELD_CAT_ID = "_id";
-	public final static String FIELD_CAT_CATEGORY = "category";
-	public final static String FIELD_CAT_VISIBLE = "visible";
-	public final static String FIELD_CAT_IMAGE = "image";
+			if (db == null)
+				db = getReadableDatabase();
+			
+			Cursor c = db.query(TABLE_CAT, new String[] { FIELD_CAT_CATEGORY, FIELD_CAT_VISIBLE, FIELD_CAT_IMAGE }, null,
+					null, null, null, null);
 
-	public final static String TABLE_APP = "app";
-	//public final static String FIELD_APP_ID = "_id";
-	public final static String FIELD_APP_CATEGORY = "category";
-	public final static String FIELD_APP_PACKAGE = "package";
-	public final static String FIELD_APP_DESCRIP = "descrip";
+			int COL_CATEGORY = c.getColumnIndexOrThrow(FIELD_CAT_CATEGORY);
+			int COL_VISIBLE = c.getColumnIndexOrThrow(FIELD_CAT_VISIBLE);
+			int COL_IMAGE = c.getColumnIndexOrThrow(FIELD_CAT_IMAGE);
 
-	public String GROUP_UNKNOWN;
+			while (c.moveToNext())
+			{
+				String categoryName = c.getString(COL_CATEGORY);
+				Integer categoryVisible = c.getInt(COL_VISIBLE);
+				byte[] categoryImage = c.getBlob(COL_IMAGE);
+				
+				Category cat = new Category(categoryName);
+				cat.setVisible(categoryVisible == 1);
+				cat.setImage(categoryImage);
+				
+				categoriesDict.put(cat.getName(), cat);
+			}
+			
+			categoriesDict.put(Category.CAT_UNASSIGNED_NAME, Category.createUnassignedCategory());
+
+			c.close();
+			
+			c = db.query(TABLE_APP, new String[] { FIELD_APP_PACKAGE,
+					FIELD_APP_CATEGORY, FIELD_APP_IMAGE }, null, null, null, null, null);
+
+			int COL_PACKAGE = c.getColumnIndexOrThrow(FIELD_APP_PACKAGE); 
+			COL_CATEGORY = c.getColumnIndexOrThrow(FIELD_APP_CATEGORY);
+			COL_IMAGE = c.getColumnIndexOrThrow(FIELD_APP_IMAGE);
+
+			while (c.moveToNext())
+			{
+				String packageName = c.getString(COL_PACKAGE), 
+					categoryName = c.getString(COL_CATEGORY);
+				
+				byte[] image = c.getBlob(COL_IMAGE);
+
+				Package p = new Package(packageName);
+				p.setImage(image);
+				
+				for (ResolveInfo i : infoList)
+				{
+					if (i.activityInfo.name.equals(packageName))
+					{
+						p.setResolveInfo(i, LauncherActivity.getPm());
+						break;
+					}
+				}
+				
+				if ((categoryName == "") || (categoryName == null))
+					categoriesDict.get(Category.CAT_UNASSIGNED_NAME).addPackage(p);
+				else
+					categoriesDict.get(categoryName).addPackage(p); 
+				
+				packagesDict.put(packageName, p);
+				
+			}
+
+			c.close();
+
+			validCache = true;
+		}
+	}
 	
+	final private DbCache cache = new DbCache();
+	
+	private final static String DB_NAME = "apps";
+	
+	private final static String TABLE_CAT = "cat";
+	private final static String FIELD_CAT_CATEGORY = "category";
+	private final static String FIELD_CAT_VISIBLE = "visible";
+	private final static String FIELD_CAT_IMAGE = "image";
+
+	private final static String TABLE_APP = "app";
+	private final static String FIELD_APP_CATEGORY = "category";
+	private final static String FIELD_APP_PACKAGE = "package";
+	private final static String FIELD_APP_DESCRIP = "descrip";
+	private final static String FIELD_APP_IMAGE = "image";
+
 	public AppDatabase(Context context)
 	{
 		super(context, DB_NAME, null, DB_VERSION);
-		GROUP_UNKNOWN = context.getString(R.string.uncategorized);
 	}
 
 	public void getCategories(List<Category> categories) 
 	{
-		synchronized (categoriesLock)
+		synchronized (cache)
 		{
-			assertCategoriesCache();
-			categories.addAll(categoriesCache);
+			cache.assertCache();
 		}
+		
+		for (Entry<String, Category> e : cache.categoriesDict.entrySet())
+			categories.add(e.getValue());
 	}
 
-	public void addToCategory(String categoryName, String packageName,
-			String packageDescrip)
+	public void assignPackageToCategory(String packageName, String categoryName)
 	{
-		removeFromCategory(categoryName, packageName);
-		addMapping(packageName, categoryName, packageDescrip);
-	}
-
-	public void removeFromCategory(String categoryName, String packageName)
-	{
-		//elimina la aplicacion de la tabla
-		//si una app pudiera estar en mas de una categoria habria que agregar un where por categoria
 		SQLiteDatabase db = this.getWritableDatabase();
-		db.delete(TABLE_APP, FIELD_APP_PACKAGE + " = '" + packageName + "'", null);
 
-		synchronized (mappingLock)
+		db.execSQL(String.format("UPDATE %s SET %s = '%s' WHERE %s = '%s'", 
+				TABLE_APP, FIELD_APP_CATEGORY, categoryName, FIELD_APP_PACKAGE, packageName));
+
+		synchronized (cache)
 		{
-			invalidateMappingCache();
+			cache.invalidateCache();
 		}
 	}
 
-	/**
-	 * Insert a known mapping into database. This doesn't check for duplicates,
-	 * and will invalidate any in-memory cache.
-	 */
-	public void addMapping(String packageName, String categoryName, String descrip, SQLiteDatabase db)
+	public void unassignPackageFromCategory(String packageName)
+	{
+		SQLiteDatabase db = this.getWritableDatabase();
+
+		db.execSQL(String.format("UPDATE %s SET %s = NULL WHERE %s = '%s'", 
+				TABLE_APP, FIELD_APP_CATEGORY, FIELD_APP_PACKAGE, packageName));
+
+		synchronized (cache)
+		{
+			cache.invalidateCache();
+		}
+	}
+
+	private void addPackagePlaceholder(String packageName, String categoryName)
 	{
 		ContentValues values = new ContentValues();
 		values.put(FIELD_APP_PACKAGE, packageName);
 		values.put(FIELD_APP_CATEGORY, categoryName);
-		values.put(FIELD_APP_DESCRIP, descrip);
+		//full information about package will be updated in reloadApplicationData() 
 
-		if (db == null)
-			db = this.getWritableDatabase();
+		SQLiteDatabase db = this.getWritableDatabase();
 		db.insert(TABLE_APP, null, values);
 
-		synchronized (mappingLock)
+		synchronized (cache)
 		{
-			invalidateMappingCache();
+			cache.invalidateCache();
 		}
-
 	}
 
-	public void addMapping(String packageName, String categoryName, String descrip)
+	public void getPackages(List<Package> packages)
 	{
-	  addMapping(packageName, categoryName, descrip, null);
+		synchronized (cache)
+		{
+			cache.assertCache();
+		}
+		
+		for (Package p : cache.packagesDict.values())
+			packages.add(p);
 	}
 	
-	public void getPackagesForCategory(List<String> packagesInCategory,
-			String categoryName) 
-	{
-		synchronized (mappingLock)
-		{
-			assertMappingCache();
-
-			for (Entry<String, String> entry : packageMappingCache.entrySet())
-			{
-				if (entry.getValue().equals(categoryName))
-					packagesInCategory.add(entry.getKey());
-			}
-		}
-	}
-
 	@Override
 	public void onCreate(SQLiteDatabase db)
 	{
 		db.execSQL("CREATE TABLE " + TABLE_APP + " (" 
-				//+ FIELD_APP_ID + " INTEGER PRIMARY KEY, " 
 				+ FIELD_APP_CATEGORY + " TEXT, "
-				+ FIELD_APP_PACKAGE + " TEXT, " + FIELD_APP_DESCRIP + ")");
+				+ FIELD_APP_PACKAGE + " TEXT, " 
+				+	FIELD_APP_DESCRIP + " TEXT, " 
+				+ FIELD_APP_IMAGE + " BLOB )");
 
 		db.execSQL("CREATE TABLE " + TABLE_CAT + " (" 
-				//+ FIELD_CAT_ID + " INTEGER PRIMARY KEY, "
 				+ FIELD_CAT_VISIBLE + " INTEGER, "
 				+ FIELD_CAT_IMAGE + " BLOB, "
 				+ FIELD_CAT_CATEGORY + " TEXT )");
 
-		synchronized (mappingLock)
+		synchronized (cache)
 		{
-			invalidateMappingCache();
+			cache.invalidateCache();
 		}
-
-		synchronized (categoriesLock)
+		
+		reloadApplicationData(db);
+		
+		synchronized (cache)
 		{
-			invalidateCategoriesCache();
+			cache.assertCache(db);
 		}
 	}
 
+	public void reloadApplicationData()
+	{
+		reloadApplicationData(null);
+	}
+	
+	public void reloadApplicationData(SQLiteDatabase db)
+	{
+		if (db == null)
+			db = getWritableDatabase();
+		
+		try
+		{
+			db.beginTransaction();
+
+			PackageManager pm = LauncherActivity.getPm();
+			List<ResolveInfo> apps = Utilities.getResolveInfoList(pm);
+
+			Map<String, Package> auxPackagesDict = new HashMap<String, Package>(cache.packagesDict);
+			
+			for (ResolveInfo i : apps)
+			{
+				ContentValues values = new ContentValues();
+				byte[] image = Utilities.drawableToBytes(Utilities.getResolveInfoIcon(i, pm)/*imageDrawable*/, LauncherActivity.iconSize);
+				values.put(FIELD_APP_IMAGE, image);
+				values.put(FIELD_APP_DESCRIP, Utilities.getResolveInfoTitle(i, pm).toString());
+
+				String packageName = Utilities.getResolveInfoFullName(i);
+				
+				Package p = auxPackagesDict.get(packageName);
+				if (p != null)
+				{
+					auxPackagesDict.remove(packageName);
+					
+					String[] params = new String[1];
+					params[0] = packageName;
+					db.update(TABLE_APP, values, FIELD_APP_PACKAGE + " = ?", params);
+				}
+				else
+				{
+					values.put(FIELD_APP_PACKAGE, packageName);
+					db.insert(TABLE_APP, null, values);
+				}
+			}
+			
+			for (Package p : auxPackagesDict.values())
+			{
+				String[] params = new String[1];
+				params[0] = p.getPackageName();
+				db.delete(TABLE_APP, FIELD_APP_PACKAGE + " = ?", params);
+			}
+
+			db.setTransactionSuccessful();
+		}
+		finally
+		{
+			db.endTransaction();
+		}
+
+	}
+	
+	public void reloadCache()
+	{
+		synchronized (cache)
+		{
+			cache.invalidateCache();
+			cache.assertCache();
+		}
+	}
+	
 	public void recreateDataBase()
 	{
 		SQLiteDatabase db = getReadableDatabase();
 		db.execSQL("DROP TABLE IF EXISTS " + TABLE_APP);
 		db.execSQL("DROP TABLE IF EXISTS " + TABLE_CAT);
-		onCreate(db);
+		onCreate(db); 
 	}
 	
 	@Override
@@ -182,23 +329,22 @@ public class AppDatabase extends SQLiteOpenHelper
 			{
 				addCatVisibleColumn(db);
 				addCatImageColumn(db);
+				addAppImageColumn(db);
 			}
-			
-//			db.execSQL("DROP TABLE IF EXISTS " + TABLE_APP);
-//			db.execSQL("DROP TABLE IF EXISTS " + TABLE_CAT);
-//			onCreate(db);
 			
 			currentVersion = DB_VERSION;
 		}
 
-		synchronized (mappingLock)
+		synchronized (cache)
 		{
-			invalidateMappingCache();
+			cache.invalidateCache();
 		}
-
-		synchronized (categoriesLock)
+		
+		reloadApplicationData(db);
+		
+		synchronized (cache)
 		{
-			invalidateCategoriesCache();
+			cache.assertCache();
 		}
 	}
 
@@ -212,6 +358,11 @@ public class AppDatabase extends SQLiteOpenHelper
 	{
 		addColumn(db, TABLE_CAT, FIELD_CAT_IMAGE, "BLOB");
 	}
+
+	private void addAppImageColumn(SQLiteDatabase db)
+	{
+		addColumn(db, TABLE_APP, FIELD_APP_IMAGE, "BLOB");
+	}
 	
 	private void addColumn(SQLiteDatabase db, String tableName, String columnName, String columnType)
 	{
@@ -219,130 +370,35 @@ public class AppDatabase extends SQLiteOpenHelper
 	}
 	
 	/**
-	 * Make sure our in-memory cache is loaded. Callers should wrap this call in
-	 * a synchronized block.
-	 */
-	private void assertMappingCache() 
-	{
-		// skip if already cached, otherwise create and fill
-		if (mappingValidCache)
-			return;
-
-		Log.d(TAG, "assertCache() is building in-memory cache");
-		SQLiteDatabase db = this.getReadableDatabase();
-		Cursor c = db.query(TABLE_APP, new String[] { FIELD_APP_PACKAGE,
-				FIELD_APP_CATEGORY }, null, null, null, null, null);
-
-		int COL_PACKAGE = c.getColumnIndexOrThrow(FIELD_APP_PACKAGE), COL_CATEGORY = c
-				.getColumnIndexOrThrow(FIELD_APP_CATEGORY);
-
-		while (c.moveToNext())
-		{
-			String packageName = c.getString(COL_PACKAGE), categoryName = c
-					.getString(COL_CATEGORY);
-
-			if ((categoryName == "") || (categoryName == null))
-				packageMappingCache.put(packageName, GROUP_UNKNOWN);
-			else
-				packageMappingCache.put(packageName, categoryName);
-		}
-
-		c.close();
-
-		mappingValidCache = true;
-	}
-
-	private void assertCategoriesCache() 
-	{
-
-		if (categoriesValidCache)
-			return;
-
-		SQLiteDatabase db = this.getReadableDatabase();
-		Cursor c = db.query(TABLE_CAT, new String[] { FIELD_CAT_CATEGORY, FIELD_CAT_VISIBLE, FIELD_CAT_IMAGE }, null,
-				null, null, null, null);
-
-		int COL_CATEGORY = c.getColumnIndexOrThrow(FIELD_CAT_CATEGORY);
-		int COL_VISIBLE = c.getColumnIndexOrThrow(FIELD_CAT_VISIBLE);
-		int COL_IMAGE = c.getColumnIndexOrThrow(FIELD_CAT_IMAGE);
-
-		while (c.moveToNext())
-		{
-			String categoryName = c.getString(COL_CATEGORY);
-			Integer categoryVisible = c.getInt(COL_VISIBLE);
-			byte[] categoryImage = c.getBlob(COL_IMAGE);
-			
-			Category cat = new Category(categoryName);
-			cat.setVisible(categoryVisible == 1);
-			cat.setImage(categoryImage);
-			
-			categoriesCache.add(cat);
-		}
-
-		c.close();
-
-		categoriesValidCache = true;
-	}
-
-	/**
-	 * Invalidate any in-memory cache, probably after resolving a
-	 * newly-categorized app. Callers should wrap this call in a synchronized
-	 * block.
-	 */
-	private void invalidateMappingCache()
-	{
-		Log.d(TAG, "invalidateCache() is removing in-memory cache");
-		packageMappingCache.clear();
-		mappingValidCache = false;
-	}
-
-	private void invalidateCategoriesCache()
-	{
-		categoriesCache.clear();
-		categoriesValidCache = false;
-	}
-
-	/**
-	 * Externally visible method to clear any internal cache.
-	 */
-	public void clearMappingCache()
-	{
-		synchronized (mappingLock)
-		{
-			invalidateMappingCache();
-		}
-	}
-
-	/**
 	 * Find the category for the given package name, which may return null if we
 	 * don't have it cached.
 	 */
-	public String getCategoryForPackage(String packageName) 
+	public Category getCategoryForPackage(String packageName) 
 	{
-		String result = null;
-		synchronized (mappingLock)
+		Category result = null;
+		
+		synchronized (cache)
 		{
-			assertMappingCache();
-			result = packageMappingCache.get(packageName);
+			cache.assertCache();
 		}
+
+		Package p = cache.packagesDict.get(packageName);
+		result = p.getCategory();
+		
 		return result;
 	}
 
 	public Category getCategory(String categoryName)
 	{
-		synchronized (categoriesLock)
+		synchronized (cache)
 		{
-			assertCategoriesCache();
-
-			for (Category cat : categoriesCache)
-				if (cat.getName().equals(categoryName))
-					return cat;
-			
-			return null;
+			cache.assertCache();
 		}
+		
+		return cache.categoriesDict.get(categoryName);
 	}
 	
-	public void importData(Map<Category, List<ImportExportManager.PackageInfo>> data)
+	public void importData(List<Category> data)
 	{
 		SQLiteDatabase db = this.getWritableDatabase();
 		try
@@ -351,15 +407,12 @@ public class AppDatabase extends SQLiteOpenHelper
 
 			deleteAll(db);
 
-			for (Category category : data.keySet())
+			for (Category category : data)
 			{
 			  addCategory(category, db);
 			  
-			  for (ImportExportManager.PackageInfo info : data.get(category))
-			  {
-				  addMapping(info.packageName, category.getName(), info.packageDescription);			  	
-			  }
-
+			  for (Package p : category.getPackagesReadOnly())
+			  	addPackagePlaceholder(p.getPackageName(), category.getName());			  	
 			}
 			
 			db.setTransactionSuccessful();
@@ -369,14 +422,13 @@ public class AppDatabase extends SQLiteOpenHelper
 			db.endTransaction();
 		}
 
-		synchronized (mappingLock)
+		cache.assertCache();
+		
+		reloadApplicationData(db);
+		
+		synchronized (cache)
 		{
-			invalidateMappingCache();
-		}
-
-		synchronized (categoriesLock)
-		{
-			invalidateCategoriesCache();
+			cache.invalidateCache();
 		}
 	}
 	
@@ -400,16 +452,10 @@ public class AppDatabase extends SQLiteOpenHelper
 			db.endTransaction();
 		}
 
-		synchronized (mappingLock)
+		synchronized (cache)
 		{
-			invalidateMappingCache();
+			cache.invalidateCache();
 		}
-
-		synchronized (categoriesLock)
-		{
-			invalidateCategoriesCache();
-		}
-
 	}
 
 	public void addCategory(Category category)
@@ -419,8 +465,8 @@ public class AppDatabase extends SQLiteOpenHelper
 	
 	public void addCategory(Category category, SQLiteDatabase db)
 	{
-		int index = categoriesCache.indexOf(category);
-		if ((index > -1) && (categoriesCache.get(index).getVisible() == category.getVisible()))
+		boolean exists = cache.categoriesDict.containsKey(category);
+		if (exists && (cache.categoriesDict.get(category).getVisible() == category.getVisible()))
 			return;
 
 		ContentValues values = new ContentValues();
@@ -432,9 +478,9 @@ public class AppDatabase extends SQLiteOpenHelper
 			db = this.getWritableDatabase();
 		db.insert(TABLE_CAT, null, values);
 
-		synchronized (categoriesLock)
+		synchronized (cache)
 		{
-			invalidateCategoriesCache();
+			cache.invalidateCache();
 		}
 
 	}
@@ -461,16 +507,10 @@ public class AppDatabase extends SQLiteOpenHelper
 			db.endTransaction();
 		}
 
-		synchronized (categoriesLock)
+		synchronized (cache)
 		{
-			invalidateCategoriesCache();
+			cache.invalidateCache();
 		}
-		
-		synchronized (mappingLock)
-		{
-			invalidateMappingCache();
-		}
-
 	}
 
 	public void deleteAll(SQLiteDatabase db)
@@ -478,21 +518,14 @@ public class AppDatabase extends SQLiteOpenHelper
 		db.delete(TABLE_APP, null, null);
 		db.delete(TABLE_CAT, null, null);
 
-		synchronized (mappingLock)
+		synchronized (cache)
 		{
-			invalidateMappingCache();
-		}
-
-		synchronized (categoriesLock)
-		{
-			invalidateCategoriesCache();
+			cache.invalidateCache();
 		}
 	}
 	
 	public void updateVisibleCat(Category category)
 	{
-		//no need to update cache bacause category item is the same instance that belongs to cache
-		
 		SQLiteDatabase db = getWritableDatabase();
 		int visible = 0;
 		if (category.getVisible())
@@ -500,12 +533,15 @@ public class AppDatabase extends SQLiteOpenHelper
 		db.execSQL("UPDATE " + TABLE_CAT + " SET " + FIELD_CAT_VISIBLE + 
 				" = " + visible + " WHERE " + FIELD_CAT_CATEGORY + " = '" +
 				category.getName() + "'");
+
+		synchronized (cache)
+		{
+			cache.invalidateCache();
+		}
 	}
 	
 	public void updateImageCat(Category category)
 	{
-		//no need to update cache bacause category item is the same instance that belongs to cache
-		
 		SQLiteDatabase db = getWritableDatabase();
 
 		ContentValues values = new ContentValues();
@@ -515,5 +551,10 @@ public class AppDatabase extends SQLiteOpenHelper
 		params[0] = category.getName();
 		
 		db.update(TABLE_CAT, values, FIELD_CAT_CATEGORY + " = ?", params);
+		
+		synchronized (cache)
+		{
+			cache.invalidateCache();
+		}
 	}
 }
