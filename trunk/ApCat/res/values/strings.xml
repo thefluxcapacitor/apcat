@@ -43,4 +43,8 @@
 <string name="msg_category_exists">Category %s already exists</string>
 <string name="reload_applications">Reload applications</string>
 <string name="select_image_title">Select image for: %s</string>
+<string name="msg_reload_applications">Reloading applications...</string>
+<string name="msg_exporting_configuration">Exporting configuration...</string>
+<string name="msg_importing_configuration">Importing configuration...</string>
+<string name="msg_resetting">Resetting configuration...</string>
 </resources>

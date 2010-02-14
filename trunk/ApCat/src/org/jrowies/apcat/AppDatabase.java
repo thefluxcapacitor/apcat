@@ -124,7 +124,7 @@ public class AppDatabase extends SQLiteOpenHelper
 			}
 
 			c.close();
-
+					
 			validCache = true;
 		}
 	}
@@ -230,22 +230,40 @@ public class AppDatabase extends SQLiteOpenHelper
 		synchronized (cache)
 		{
 			cache.invalidateCache();
+			cache.assertCache(db);
 		}
 		
 		reloadApplicationData(db, DB_VERSION);
 		
 		synchronized (cache)
 		{
+			cache.invalidateCache();
 			cache.assertCache(db);
 		}
 	}
 
-	public void reloadApplicationData()
+	public void forceReloadApplicationData()
+	{
+		synchronized (cache)
+		{
+			cache.assertCache();
+		}
+		
+		reloadApplicationData();
+		
+		synchronized (cache)
+		{
+			cache.invalidateCache();
+			cache.assertCache();
+		}
+	}
+	
+	private void reloadApplicationData()
 	{
 		reloadApplicationData(null, DB_VERSION);
 	}
 	
-	public void reloadApplicationData(SQLiteDatabase db, int currentDataVersion)
+	private void reloadApplicationData(SQLiteDatabase db, int currentDataVersion)
 	{
 		if (db == null)
 			db = getWritableDatabase();
@@ -340,7 +358,7 @@ public class AppDatabase extends SQLiteOpenHelper
 		{
 			if (currentVersion == 1)
 			{
-				addCatVisibleColumn(db);
+				addCatVisibleColumn(db); 
 				addCatImageColumn(db);
 				addAppImageColumn(db);
 			}
@@ -437,7 +455,10 @@ public class AppDatabase extends SQLiteOpenHelper
 			db.endTransaction();
 		}
 
-		cache.assertCache();
+		synchronized (cache)
+		{
+			cache.assertCache();
+		}
 		
 		reloadApplicationData(db, importDataVersion);
 		
