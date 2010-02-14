@@ -44,6 +44,8 @@ import android.content.res.Configuration;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.Gravity;
@@ -80,6 +82,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 	private final int REQUEST_ICON = 1;
 	private final int REQUEST_PACK = 2;
   private String CAT_UNASSIGNED_VISIBLE_NAME; 
+	private static boolean dbInitialized = false;
   	
 	public class IconPackInfo
 	{
@@ -112,10 +115,9 @@ public class LauncherActivity extends ExpandableListActivity implements
 		// TODO: remember open/closed status when coming back later
 
 		iconSize = (int) getResources().getDimension(android.R.dimen.app_icon_size);
-		
+
 		pm = getPackageManager();
 		appdb = new AppDatabase(LauncherActivity.this);
-		appdb.getReadableDatabase(); //to force upgrade of database if application was upgraded
 		
 		getExpandableListView().setItemsCanFocus(true);
 	}
@@ -123,9 +125,10 @@ public class LauncherActivity extends ExpandableListActivity implements
 	public void onStart()
 	{
 		super.onStart();
+		
 		new ProcessTask().execute();
-
 	}
+	
 
 	public void onStop()
 	{
@@ -241,10 +244,97 @@ public class LauncherActivity extends ExpandableListActivity implements
 		return true;
 	}
 
+	private int RELOAD_FINISHED = 1;
+	private int EXPORT_FINISHED = 2;
+	private int IMPORT_FINISHED = 3;
+	private int RESET_FINISHED = 4;
+	
+	private final Handler handler = new Handler() 
+	{
+		@Override
+		public void handleMessage(Message msg) 
+		{
+			if ((msg.what == RELOAD_FINISHED) || 
+				(msg.what == EXPORT_FINISHED) || 
+				(msg.what == IMPORT_FINISHED) ||
+				(msg.what == RESET_FINISHED))
+			{
+				((ProgressDialog)msg.obj).dismiss();
+			}
+			
+			if (msg.what == RELOAD_FINISHED)
+			{
+				refresh();
+			}
+			else if (msg.what == EXPORT_FINISHED)
+			{
+				if (msg.getData().getBoolean("ok")) 
+				{
+					refresh();
+					
+					new AlertDialog.Builder(LauncherActivity.this)
+						.setMessage(String.format(LauncherActivity.this.getString(R.string.msg_data_exported), 
+								msg.getData().getString("fileName")))
+						.setPositiveButton(LauncherActivity.this.getString(R.string.ok), null)
+						.create().show();
+				}
+				else
+				{
+					new AlertDialog.Builder(LauncherActivity.this)
+					.setMessage(LauncherActivity.this.getString(R.string.msg_data_not_exported))
+					.setPositiveButton(LauncherActivity.this.getString(R.string.ok), null)
+					.create().show();
+				}
+			}
+			else if (msg.what == IMPORT_FINISHED)
+			{
+				if (msg.getData().getBoolean("ok"))
+				{
+					refresh();
+					
+					new AlertDialog.Builder(LauncherActivity.this)
+					.setMessage(String.format(LauncherActivity.this.getString(R.string.msg_data_imported), 
+							msg.getData().getString("fileName")))
+					.setPositiveButton(LauncherActivity.this.getString(R.string.ok), null)
+					.create().show();								
+				}
+				else
+				{
+					new AlertDialog.Builder(LauncherActivity.this)
+					.setTitle(LauncherActivity.this.getString(R.string.error))
+					.setMessage(String.format(LauncherActivity.this.getString(R.string.msg_couldnt_import), 
+							msg.getData().getString("fileName")))
+					.setPositiveButton(LauncherActivity.this.getString(R.string.ok), null)
+					.create().show();
+				}
+			}
+			else if (msg.what == RESET_FINISHED)
+			{
+				setListAdapter(null);
+				new ProcessTask().execute();
+			}
+			
+		}
+	};
+	
 	private void reloadApplications()
 	{
-		getAppdb().reloadApplicationData();
-		refresh();
+		final ProgressDialog dialog = ProgressDialogFactory.CreateDialog(LauncherActivity.this, 
+				LauncherActivity.this.getString(R.string.msg_reload_applications), -1);
+		dialog.show();
+
+		new Thread()
+		{
+			@Override
+			public void run() 
+			{
+				getAppdb().forceReloadApplicationData();
+				Message msg = new Message();
+				msg.obj = dialog;
+				msg.what = RELOAD_FINISHED;
+				handler.sendMessage(msg);
+			}
+		}.start();
 	}
 	
 	private void expandCollapse()
@@ -349,9 +439,24 @@ public class LauncherActivity extends ExpandableListActivity implements
 				{
 					d.dismiss();
 					
-					getAppdb().recreateDataBase();
-					setListAdapter(null);
-					new ProcessTask().execute();
+					final ProgressDialog dialog = ProgressDialogFactory.CreateDialog(LauncherActivity.this, 
+							LauncherActivity.this.getString(R.string.msg_resetting), -1);
+					dialog.show();
+
+					new Thread()
+					{
+						@Override
+						public void run() 
+						{
+							getAppdb().recreateDataBase();
+							
+							Message msg = new Message();
+							msg.obj = dialog;
+							msg.what = RESET_FINISHED;
+							handler.sendMessage(msg);
+						}
+					}.start();
+					
 				}
 			}).setNegativeButton(LauncherActivity.this.getString(R.string.cancel), null)
 			.create().show();
@@ -370,30 +475,35 @@ public class LauncherActivity extends ExpandableListActivity implements
 					{
 						d.dismiss();
 						
-						List<Category> categories = new ArrayList<Category>();
-						getAppdb().getCategories(categories);
+						final ProgressDialog dialog = ProgressDialogFactory.CreateDialog(LauncherActivity.this, 
+								LauncherActivity.this.getString(R.string.msg_exporting_configuration), -1);
+						dialog.show();
 
-						ImportExportManager manager = new ImportExportManager();
-
-						for (Category cat : categories)
-							manager.addCategory(cat);
-
-						boolean ok = manager.Export();
-						
-						if (ok)
+						new Thread()
 						{
-							new AlertDialog.Builder(LauncherActivity.this)
-								.setMessage(String.format(LauncherActivity.this.getString(R.string.msg_data_exported), manager.getFileName()))
-								.setPositiveButton(LauncherActivity.this.getString(R.string.ok), null)
-								.create().show();
-						}
-						else
-						{
-							new AlertDialog.Builder(LauncherActivity.this)
-							.setMessage(LauncherActivity.this.getString(R.string.msg_data_not_exported))
-							.setPositiveButton(LauncherActivity.this.getString(R.string.ok), null)
-							.create().show();
-						}
+							@Override
+							public void run() 
+							{
+								List<Category> categories = new ArrayList<Category>();
+								getAppdb().getCategories(categories);
+
+								final ImportExportManager manager = new ImportExportManager();
+
+								for (Category cat : categories)
+									manager.addCategory(cat);
+
+								boolean ok = manager.Export();
+								
+								Message msg = new Message();
+								msg.obj = dialog;
+								Bundle b = new Bundle();
+								b.putBoolean("ok", ok);
+								b.putString("fileName", manager.getFileName());
+								msg.setData(b);
+								msg.what = EXPORT_FINISHED;
+								handler.sendMessage(msg);
+							}
+						}.start();
 						
 					}
 				}).setNegativeButton(LauncherActivity.this.getString(R.string.cancel), null)
@@ -413,27 +523,30 @@ public class LauncherActivity extends ExpandableListActivity implements
 					{
 						d.dismiss();
 
-						ImportExportManager manager = new ImportExportManager();
+						final ProgressDialog dialog = ProgressDialogFactory.CreateDialog(LauncherActivity.this, 
+								LauncherActivity.this.getString(R.string.msg_importing_configuration), -1);
+						dialog.show();
 						
-						boolean ok = manager.Import(getPm(), getAppdb());
-						if (ok)
+						new Thread()
 						{
-							refresh();
-							
-							new AlertDialog.Builder(LauncherActivity.this)
-							.setMessage(String.format(LauncherActivity.this.getString(R.string.msg_data_imported), manager.getFileName()))
-							.setPositiveButton(LauncherActivity.this.getString(R.string.ok), null)
-							.create().show();								
-						}
-						else
-						{
-							new AlertDialog.Builder(LauncherActivity.this)
-							.setTitle(LauncherActivity.this.getString(R.string.error))
-							.setMessage(String.format(LauncherActivity.this.getString(R.string.msg_couldnt_import), manager.getFileName()))
-							.setPositiveButton(LauncherActivity.this.getString(R.string.ok), null)
-							.create().show();
-						}
-
+							@Override
+							public void run() 
+							{
+								ImportExportManager manager = new ImportExportManager();
+								
+								boolean ok = manager.Import(getPm(), getAppdb());
+								
+								Message msg = new Message();
+								msg.obj = dialog;
+								Bundle b = new Bundle();
+								b.putBoolean("ok", ok);
+								b.putString("fileName", manager.getFileName());
+								msg.setData(b);
+								msg.what = IMPORT_FINISHED;
+								handler.sendMessage(msg);
+							}
+						}.start();
+						
 					}
 				}).setNegativeButton(LauncherActivity.this.getString(R.string.cancel), null)
 				.create().show();
@@ -468,9 +581,17 @@ public class LauncherActivity extends ExpandableListActivity implements
 	 */
 	private class ProcessTask extends UserTask<Void, Void, GroupAdapter>
 	{
+    private ProgressDialog dialog;
+		
 		@SuppressWarnings("unchecked")
 		public GroupAdapter doInBackground(Void... params)
 		{
+			if (!dbInitialized)
+			{
+				getAppdb().getReadableDatabase(); //to force upgrade of database in case application was upgraded
+				dbInitialized = true;
+			}
+
 			ArrayList<Category> categories = new ArrayList<Category>();
 			getAppdb().getCategories(categories);
 
@@ -504,13 +625,16 @@ public class LauncherActivity extends ExpandableListActivity implements
 		}
 
 		public GroupAdapter groupAdapter;
-		private ProgressDialog dialog;
+//		private ProgressDialog dialog;
 
 		@Override
-		public void onPreExecute()
+		public void onPreExecute() 
 		{
-			dialog = ProgressDialogFactory.CreateDialog(LauncherActivity.this, LauncherActivity.this.getString(R.string.msg_loading), -1);
-			dialog.show();
+			if (dialog == null)
+			{
+				dialog = ProgressDialogFactory.CreateDialog(LauncherActivity.this, LauncherActivity.this.getString(R.string.msg_loading), -1);
+				dialog.show();
+			}
 		}
 
 		@Override

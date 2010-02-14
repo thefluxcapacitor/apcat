@@ -11,7 +11,7 @@
 <string name="str_import">Importar</string>
 <string name="reset">Reiniciar</string>
 <string name="warning">Atención !!</string>
-<string name="msg_delete_all_cat">Se van a eliminar todas las categorias, desea continuar?</string>
+<string name="msg_delete_all_cat">Se van a eliminar todas las categorías, desea continuar?</string>
 <string name="confirmation">Confirmación</string>
 <string name="msg_export_configuration">Se va a exportar la configuración actual, desea continuar?</string>
 <string name="msg_data_exported">Se exportaron los datos en \'%s\'</string>
@@ -21,7 +21,7 @@
 <string name="msg_couldnt_import">No fue posible importar los datos, verifique que exista el archivo \'%s\' y que contenga datos válidos</string>
 <string name="collapse_all">Colapsar todas</string>
 <string name="select_applications">Seleccionar aplicaciones</string>
-<string name="remove_category">Eliminar categoria</string>
+<string name="remove_category">Eliminar categoría</string>
 <string name="rename_category">Renombrar categoría</string>
 <string name="msg_remove_category">Desea eliminar la categoría?</string>
 <string name="details">Ver detalles</string>
@@ -34,12 +34,16 @@
 <string name="unselect_all">Deseleccionar todas</string>
 <string name="msg_loading">Cargando. Espere por favor...</string>
 <string name="msg_data_not_exported">Los datos no se pudieron exportar</string>
-<string name="msg_set_visible_cat">Seleccionar categories visibles</string>
-<string name="set_visible_cat">Filtro de categorias</string>
+<string name="msg_set_visible_cat">Seleccionar categorías visibles</string>
+<string name="set_visible_cat">Filtro de categorías</string>
 <string name="select_image">Seleccionar imagen</string>
 <string name="select_icon_pack">Seleccionar colección de imágenes</string>
 <string name="choose_action">Elegir acción</string>
 <string name="msg_category_exists">La categoría %s ya existe</string>
 <string name="reload_applications">Recargar aplicaciones</string>
 <string name="select_image_title">Seleccionar imagen para: %s</string>
+<string name="msg_reload_applications">Recargando aplicaciones...</string>
+<string name="msg_exporting_configuration">Exportando configuración...</string>
+<string name="msg_importing_configuration">Importando configuración...</string>
+<string name="msg_resetting">Reiniciando configuración...</string>
 </resources>
