@@ -85,6 +85,13 @@ public class AppSelectActivity extends ScrollListSelectActivity
 			List<Package> packages = new ArrayList<Package>();
 			LauncherActivity.getAppdb().getPackages(packages);
 			
+			//remove packages that were uninstalled
+			for ( int i = packages.size() - 1 ; i >= 0 ; i-- )
+			{
+				if (packages.get(i).getResolveInfo() == null)
+					packages.remove(i);
+			}
+			
 			final Collator collator = Collator.getInstance();
 			Collections.sort(packages, new Comparator<Package>()
 			{

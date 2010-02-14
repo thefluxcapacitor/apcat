@@ -68,7 +68,7 @@ import android.widget.Toast;
 import com.google.android.photostream.UserTask;
 
 public class LauncherActivity extends ExpandableListActivity implements
-		OnCreateContextMenuListener, OnClickListener
+		OnCreateContextMenuListener, OnClickListener, AppDatabase.OnReloadApplicationsListener
 {
 	private static final int ACTIVITY_CREATE = 0;
 	private LayoutInflater inflater = null;
@@ -118,13 +118,53 @@ public class LauncherActivity extends ExpandableListActivity implements
 
 		pm = getPackageManager();
 		appdb = new AppDatabase(LauncherActivity.this);
+		appdb.onReloadListener = this;
 		
 		getExpandableListView().setItemsCanFocus(true);
 	}
 
+	private void showApplicationsInstalledWarning(boolean packagesAdded, boolean packagesRemoved)
+	{
+		String message;
+		
+		if (packagesAdded)
+			message = LauncherActivity.this.getString(R.string.msg_installed_apps);
+		else
+			message = LauncherActivity.this.getString(R.string.msg_uninstalled_apps);
+		
+		new AlertDialog.Builder(LauncherActivity.this)
+		.setTitle(LauncherActivity.this.getString(R.string.warning))
+		.setMessage(message)
+		.setPositiveButton(LauncherActivity.this.getString(R.string.ok),
+				new DialogInterface.OnClickListener()
+				{
+					@Override
+					public void onClick(DialogInterface d, int which)
+					{
+						d.dismiss();
+					}
+				}).create().show();
+	}
+	
+	@Override
+	public void onReload()
+	{
+		PreferencesManager.putPackagesAdded(this, false);
+		PreferencesManager.putPackagesRemoved(this, false);
+	}
+	
+	//private static boolean applicationRunning = false;
+	
 	public void onStart()
 	{
 		super.onStart();
+		
+    boolean packagesAdded = PreferencesManager.getPackagesAdded(this);
+    boolean packagesRemoved = PreferencesManager.getPackagesRemoved(this);
+    if (packagesAdded || packagesRemoved)
+    	showApplicationsInstalledWarning(packagesAdded, packagesRemoved);
+		
+		//applicationRunning = true;
 		
 		new ProcessTask().execute();
 	}
@@ -132,6 +172,8 @@ public class LauncherActivity extends ExpandableListActivity implements
 
 	public void onStop()
 	{
+		//applicationRunning = false;
+		
 		super.onStop();
 		this.setListAdapter(null);
 	}
@@ -611,9 +653,11 @@ public class LauncherActivity extends ExpandableListActivity implements
 				{
 					public int compare(Package object1, Package object2)
 					{
-//						if ((object1.getTitle() == null) || (object2.getTitle() == null))
-//							return 0;
-//						else
+						if (object1.getTitle() == null)
+							return -1;
+						else if (object2.getTitle() == null)
+							return 1;
+						else
 							return collator.compare(object1.getTitle(), object2.getTitle());
 					}
 				});
@@ -1152,7 +1196,10 @@ public class LauncherActivity extends ExpandableListActivity implements
 				{
 					// fill with actual child info if available
 					final Package p = actualChildren.get(i);
-					textView.setText(p.getTitle());
+					CharSequence title = p.getTitle();
+					if (title == null)
+						title = LauncherActivity.this.getString(R.string.not_found);
+					textView.setText(title);
 					textView.setTag(p);
 					textView.setVisibility(View.VISIBLE);
 
@@ -1192,10 +1239,20 @@ public class LauncherActivity extends ExpandableListActivity implements
 			return;
 
 		Package p = (Package) v.getTag();
+		
+		if (p.getResolveInfo() == null) 
+		{
+			popUp(this, this.getString(R.string.msg_not_found));
+			return;
+		}
 
 		final String packageName = Utilities.getResolveInfoPackageName(p.getResolveInfo());
 		
-		menu.setHeaderTitle(p.getTitle());
+		CharSequence title = p.getTitle();
+		if (title == null)
+			title = LauncherActivity.this.getString(R.string.not_found);
+		
+		menu.setHeaderTitle(title);
 
 		Intent detailsIntent = new Intent();
 		detailsIntent.setClassName("com.android.settings",
@@ -1206,6 +1263,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 
 		Intent deleteIntent = new Intent(Intent.ACTION_DELETE);
 		deleteIntent.setData(Uri.parse("package:" + packageName));
+
 		menu.add(LauncherActivity.this.getString(R.string.uninstall)).setIntent(deleteIntent);
 		
 		try
@@ -1239,6 +1297,12 @@ public class LauncherActivity extends ExpandableListActivity implements
 		
 		Package p = (Package) v.getTag();
 
+		if (p.getResolveInfo() == null) 
+		{
+			popUp(this, this.getString(R.string.msg_not_found));
+			return;
+		}
+		
 		// build actual intent for launching app
 		Intent launch = new Intent(Intent.ACTION_MAIN);
 		launch.addCategory(Intent.CATEGORY_LAUNCHER);
@@ -1253,8 +1317,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 		}
 		catch (Exception e)
 		{
-			Toast.makeText(this, "Problem trying to launch application",
-					Toast.LENGTH_SHORT).show();
+			popUp(this, getString(R.string.msg_problem_launch_app));
 			Log.e(TAG, "Problem trying to launch application", e);
 		}
 
