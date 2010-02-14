@@ -46,4 +46,9 @@
 <string name="msg_exporting_configuration">Exportando configuración...</string>
 <string name="msg_importing_configuration">Importando configuración...</string>
 <string name="msg_resetting">Reiniciando configuración...</string>
+<string name="not_found">No encontrada</string>
+<string name="msg_not_found">Aplicación no encontrada, por favor recargue las aplicaciones</string>
+<string name="msg_installed_apps">Se encontraron nuevas aplicaciones, por favor use Recargar Aplicaciones para actualizar</string>
+<string name="msg_uninstalled_apps">Se desinstalaron aplicaciones, por favor use Recargar Aplicaciones para actualizar</string>
+<string name="msg_problem_launch_app">Hubo un problema intentando ejecutar la aplicación</string>
 </resources>

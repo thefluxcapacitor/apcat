@@ -128,7 +128,7 @@ public class AppDatabase extends SQLiteOpenHelper
 			validCache = true;
 		}
 	}
-	
+
 	final private DbCache cache = new DbCache();
 	
 	private final static String DB_NAME = "apps";
@@ -144,6 +144,13 @@ public class AppDatabase extends SQLiteOpenHelper
 	private final static String FIELD_APP_DESCRIP = "descrip";
 	private final static String FIELD_APP_IMAGE = "image";
 
+	public OnReloadApplicationsListener onReloadListener = null;
+	
+	public interface OnReloadApplicationsListener 
+	{  
+	   public abstract void onReload();  
+	}
+	
 	public AppDatabase(Context context)
 	{
 		super(context, DB_NAME, null, DB_VERSION);
@@ -330,6 +337,8 @@ public class AppDatabase extends SQLiteOpenHelper
 			db.endTransaction();
 		}
 
+		if (onReloadListener != null)
+			onReloadListener.onReload();
 	}
 	
 	public void reloadCache()

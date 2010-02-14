@@ -47,4 +47,9 @@
 <string name="msg_exporting_configuration">Exporting configuration...</string>
 <string name="msg_importing_configuration">Importing configuration...</string>
 <string name="msg_resetting">Resetting configuration...</string>
+<string name="not_found">Not found</string>
+<string name="msg_not_found">Application not found, please reload applications</string>
+<string name="msg_installed_apps">New applications found, please use Reload Applications to refresh</string>
+<string name="msg_uninstalled_apps">Applications were uninstalled, please use Reload Applications to refresh</string>
+<string name="msg_problem_launch_app">Problem trying to launch application</string>
 </resources>
