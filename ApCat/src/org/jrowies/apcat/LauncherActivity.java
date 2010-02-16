@@ -63,12 +63,10 @@ import android.widget.ExpandableListAdapter;
 import android.widget.ExpandableListView;
 import android.widget.FrameLayout;
 import android.widget.TextView;
-import android.widget.Toast;
-
 import com.google.android.photostream.UserTask;
 
 public class LauncherActivity extends ExpandableListActivity implements
-		OnCreateContextMenuListener, OnClickListener, AppDatabase.OnReloadApplicationsListener
+		OnCreateContextMenuListener, OnClickListener//, AppDatabase.OnReloadApplicationsListener
 {
 	private static final int ACTIVITY_CREATE = 0;
 	private LayoutInflater inflater = null;
@@ -118,53 +116,49 @@ public class LauncherActivity extends ExpandableListActivity implements
 
 		pm = getPackageManager();
 		appdb = new AppDatabase(LauncherActivity.this);
-		appdb.onReloadListener = this;
+//		appdb.onReloadListener = this;
 		
 		getExpandableListView().setItemsCanFocus(true);
 	}
 
-	private void showApplicationsInstalledWarning(boolean packagesAdded, boolean packagesRemoved)
-	{
-		String message;
-		
-		if (packagesAdded)
-			message = LauncherActivity.this.getString(R.string.msg_installed_apps);
-		else
-			message = LauncherActivity.this.getString(R.string.msg_uninstalled_apps);
-		
-		new AlertDialog.Builder(LauncherActivity.this)
-		.setTitle(LauncherActivity.this.getString(R.string.warning))
-		.setMessage(message)
-		.setPositiveButton(LauncherActivity.this.getString(R.string.ok),
-				new DialogInterface.OnClickListener()
-				{
-					@Override
-					public void onClick(DialogInterface d, int which)
-					{
-						d.dismiss();
-					}
-				}).create().show();
-	}
-	
-	@Override
-	public void onReload()
-	{
-		PreferencesManager.putPackagesAdded(this, false);
-		PreferencesManager.putPackagesRemoved(this, false);
-	}
-	
-	//private static boolean applicationRunning = false;
+//	private void showApplicationsInstalledWarning(boolean packagesAdded, boolean packagesRemoved)
+//	{
+//		String message;
+//		
+//		if (packagesAdded)
+//			message = LauncherActivity.this.getString(R.string.msg_installed_apps);
+//		else
+//			message = LauncherActivity.this.getString(R.string.msg_uninstalled_apps);
+//		
+//		new AlertDialog.Builder(LauncherActivity.this)
+//		.setTitle(LauncherActivity.this.getString(R.string.warning))
+//		.setMessage(message)
+//		.setPositiveButton(LauncherActivity.this.getString(R.string.ok),
+//				new DialogInterface.OnClickListener()
+//				{
+//					@Override
+//					public void onClick(DialogInterface d, int which)
+//					{
+//						d.dismiss();
+//					}
+//				}).create().show();
+//	}
+//	
+//	@Override
+//	public void onReload()
+//	{
+//		PreferencesManager.putPackagesAdded(this, false);
+//		PreferencesManager.putPackagesRemoved(this, false);
+//	}
 	
 	public void onStart()
 	{
 		super.onStart();
 		
-    boolean packagesAdded = PreferencesManager.getPackagesAdded(this);
-    boolean packagesRemoved = PreferencesManager.getPackagesRemoved(this);
-    if (packagesAdded || packagesRemoved)
-    	showApplicationsInstalledWarning(packagesAdded, packagesRemoved);
-		
-		//applicationRunning = true;
+//    boolean packagesAdded = PreferencesManager.getPackagesAdded(this);
+//    boolean packagesRemoved = PreferencesManager.getPackagesRemoved(this);
+//    if (packagesAdded || packagesRemoved)
+//    	showApplicationsInstalledWarning(packagesAdded, packagesRemoved);
 		
 		new ProcessTask().execute();
 	}
@@ -172,8 +166,6 @@ public class LauncherActivity extends ExpandableListActivity implements
 
 	public void onStop()
 	{
-		//applicationRunning = false;
-		
 		super.onStop();
 		this.setListAdapter(null);
 	}
@@ -438,7 +430,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 										}
 										else
 										{
-											popUp(context, String.format(LauncherActivity.this.getString(R.string.msg_category_exists), valor));
+											Utilities.popUp(context, String.format(LauncherActivity.this.getString(R.string.msg_category_exists), valor));
 										}
 									}
 									catch (Exception e)
@@ -848,7 +840,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 										}
 										else
 										{
-											popUp(context, String.format(LauncherActivity.this.getString(R.string.msg_category_exists), valor));
+											Utilities.popUp(context, String.format(LauncherActivity.this.getString(R.string.msg_category_exists), valor));
 										}
 									}
 									catch (Exception e)
@@ -1242,7 +1234,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 		
 		if (p.getResolveInfo() == null) 
 		{
-			popUp(this, this.getString(R.string.msg_not_found));
+			Utilities.popUp(this, this.getString(R.string.msg_not_found));
 			return;
 		}
 
@@ -1299,7 +1291,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 
 		if (p.getResolveInfo() == null) 
 		{
-			popUp(this, this.getString(R.string.msg_not_found));
+			Utilities.popUp(this, this.getString(R.string.msg_not_found));
 			return;
 		}
 		
@@ -1317,16 +1309,10 @@ public class LauncherActivity extends ExpandableListActivity implements
 		}
 		catch (Exception e)
 		{
-			popUp(this, getString(R.string.msg_problem_launch_app));
+			Utilities.popUp(this, getString(R.string.msg_problem_launch_app));
 			Log.e(TAG, "Problem trying to launch application", e);
 		}
 
-	}
-	
-	public static void popUp(Context context, String message)
-	{
-		Toast t = Toast.makeText(context, message, Toast.LENGTH_LONG);
-		t.show();
 	}
 
 //	@Override

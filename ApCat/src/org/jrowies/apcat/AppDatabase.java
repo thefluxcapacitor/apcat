@@ -144,12 +144,12 @@ public class AppDatabase extends SQLiteOpenHelper
 	private final static String FIELD_APP_DESCRIP = "descrip";
 	private final static String FIELD_APP_IMAGE = "image";
 
-	public OnReloadApplicationsListener onReloadListener = null;
+//	public OnReloadApplicationsListener onReloadListener = null;
 	
-	public interface OnReloadApplicationsListener 
-	{  
-	   public abstract void onReload();  
-	}
+//	public interface OnReloadApplicationsListener 
+//	{  
+//	   public abstract void onReload();  
+//	}
 	
 	public AppDatabase(Context context)
 	{
@@ -193,6 +193,24 @@ public class AppDatabase extends SQLiteOpenHelper
 		}
 	}
 
+	public void addPackage(Package packageObj)
+	{
+		SQLiteDatabase db = getReadableDatabase();
+		
+		ContentValues values = new ContentValues();
+		values.put(FIELD_APP_IMAGE, packageObj.getImage());
+		values.put(FIELD_APP_DESCRIP, packageObj.getTitle().toString());
+		values.put(FIELD_APP_PACKAGE, packageObj.getPackageName());
+		db.insert(TABLE_APP, null, values);
+	}
+	
+	public void removePackageOnlyWithPackageName(String packageName)
+	{
+		SQLiteDatabase db = getReadableDatabase();
+		String sql = "DELETE FROM " + TABLE_APP + " WHERE " + FIELD_APP_PACKAGE + " LIKE '" + packageName + "%'";
+		db.execSQL(sql);
+	}
+	
 	private void addPackagePlaceholder(String packageName, String categoryName)
 	{
 		ContentValues values = new ContentValues();
@@ -337,8 +355,8 @@ public class AppDatabase extends SQLiteOpenHelper
 			db.endTransaction();
 		}
 
-		if (onReloadListener != null)
-			onReloadListener.onReload();
+//		if (onReloadListener != null)
+//			onReloadListener.onReload();
 	}
 	
 	public void reloadCache()
@@ -347,6 +365,14 @@ public class AppDatabase extends SQLiteOpenHelper
 		{
 			cache.invalidateCache();
 			cache.assertCache();
+		}
+	}
+	
+	public void invalidateCache()
+	{
+		synchronized (cache)
+		{
+			cache.invalidateCache();
 		}
 	}
 	
