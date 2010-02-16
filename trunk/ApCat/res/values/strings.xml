@@ -52,4 +52,6 @@
 <string name="msg_installed_apps">New applications found, please use Reload Applications to refresh</string>
 <string name="msg_uninstalled_apps">Applications were uninstalled, please use Reload Applications to refresh</string>
 <string name="msg_problem_launch_app">Problem trying to launch application</string>
+<string name="msg_application_added">%s: a new application has been added</string>
+<string name="msg_application_removed">%s: an application has been removed</string>
 </resources>

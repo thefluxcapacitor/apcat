@@ -51,4 +51,6 @@
 <string name="msg_installed_apps">Se encontraron nuevas aplicaciones, por favor use Recargar Aplicaciones para actualizar</string>
 <string name="msg_uninstalled_apps">Se desinstalaron aplicaciones, por favor use Recargar Aplicaciones para actualizar</string>
 <string name="msg_problem_launch_app">Hubo un problema intentando ejecutar la aplicación</string>
+<string name="msg_application_added">%s: una nueva aplicación ha sido agregada</string>
+<string name="msg_application_removed">%s: una aplicación ha sido removida</string>
 </resources>

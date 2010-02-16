@@ -22,6 +22,7 @@ package org.jrowies.apcat;
 import java.io.ByteArrayOutputStream;
 import java.util.List;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
@@ -31,9 +32,16 @@ import android.graphics.Bitmap.CompressFormat;
 import android.graphics.Canvas;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
+import android.widget.Toast;
 
 public class Utilities
 {
+	public static void popUp(Context context, String message)
+	{
+		Toast t = Toast.makeText(context, message, Toast.LENGTH_LONG);
+		t.show();
+	}
+
 	public static List<ResolveInfo> getResolveInfoList(PackageManager pm)
 	{
 		Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
