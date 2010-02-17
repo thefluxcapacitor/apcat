@@ -56,5 +56,5 @@
 <string name="msg_application_removed">%s: an application has been removed</string>
 
 <string name="change_log">&lt;b&gt;New in version %s:&lt;/b&gt;&lt;BR&gt;&lt;BR&gt;Categories filter&lt;BR&gt;&lt;BR&gt;Select icons for categories from any icon pack installed on the phone&lt;BR&gt;&lt;BR&gt;Performance increase while loading applications and drawing icons&lt;BR&gt;&lt;BR&gt;Fix crash when changing orientation while loading applications&lt;BR&gt;&lt;BR&gt;Several visual improvements&lt;BR&gt;&lt;BR&gt;Some minor bug fixes</string>
-<string name="view_change_log">View change log</string>
+<string name="view_change_log">What\'s new</string>
 </resources>
