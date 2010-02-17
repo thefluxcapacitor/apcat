@@ -376,6 +376,11 @@ public class AppDatabase extends SQLiteOpenHelper
 		}
 	}
 	
+//	public boolean getValidCache()
+//	{
+//		return cache.validCache;
+//	}
+	
 	public void recreateDataBase()
 	{
 		SQLiteDatabase db = getReadableDatabase();
