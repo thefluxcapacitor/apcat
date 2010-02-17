@@ -271,6 +271,7 @@ public class AppDatabase extends SQLiteOpenHelper
 	{
 		synchronized (cache)
 		{
+			cache.invalidateCache();
 			cache.assertCache();
 		}
 		
@@ -291,7 +292,7 @@ public class AppDatabase extends SQLiteOpenHelper
 	private void reloadApplicationData(SQLiteDatabase db, int currentDataVersion)
 	{
 		if (db == null)
-			db = getWritableDatabase();
+			db = getWritableDatabase(); 
 		
 		try
 		{
@@ -497,9 +498,12 @@ public class AppDatabase extends SQLiteOpenHelper
 
 		synchronized (cache)
 		{
+			cache.invalidateCache();
 			cache.assertCache();
 		}
 		
+		//don't remove this line without checking before ImportExportManager.parseJSONDataVersion1 and 
+		//ImportExportManager.parseJSONDataVersion2
 		reloadApplicationData(db, importDataVersion);
 		
 		synchronized (cache)
