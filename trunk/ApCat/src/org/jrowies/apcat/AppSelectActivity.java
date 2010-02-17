@@ -17,10 +17,7 @@
 
 package org.jrowies.apcat;
 
-import java.text.Collator;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -67,6 +64,8 @@ public class AppSelectActivity extends ScrollListSelectActivity
 		}
 	}
 	
+	public static List<Package> packages;
+
 	private void drawApplications(boolean showUncategorizedOnly)
 	{
 		try
@@ -82,24 +81,24 @@ public class AppSelectActivity extends ScrollListSelectActivity
 
 			chkList = new ArrayList<CheckBox>();
 
-			List<Package> packages = new ArrayList<Package>();
-			LauncherActivity.getAppdb().getPackages(packages);
-			
-			//remove packages that were uninstalled
-			for ( int i = packages.size() - 1 ; i >= 0 ; i-- )
-			{
-				if (packages.get(i).getResolveInfo() == null)
-					packages.remove(i);
-			}
-			
-			final Collator collator = Collator.getInstance();
-			Collections.sort(packages, new Comparator<Package>()
-			{
-				public int compare(Package object1, Package object2)
-				{
-					return collator.compare(object1.getTitle(), object2.getTitle());
-				}
-			});
+//			List<Package> packages = new ArrayList<Package>();
+//			LauncherActivity.getAppdb().getPackages(packages);
+//			
+//			//remove packages that were uninstalled
+//			for ( int i = packages.size() - 1 ; i >= 0 ; i-- )
+//			{
+//				if (packages.get(i).getResolveInfo() == null)
+//					packages.remove(i);
+//			}
+//			
+//			final Collator collator = Collator.getInstance();
+//			Collections.sort(packages, new Comparator<Package>()
+//			{
+//				public int compare(Package object1, Package object2)
+//				{
+//					return collator.compare(object1.getTitle(), object2.getTitle());
+//				}
+//			});
 
 			boolean firstPass = false;
 			if (packageSelStates == null)
@@ -281,4 +280,14 @@ public class AppSelectActivity extends ScrollListSelectActivity
 		return String.format(this.getString(R.string.select_applications_of), groupNameAux);
 	}
 
+	public void onDestroy()
+	{
+		super.onDestroy();
+		if (packages != null)
+		{
+			packages.clear();
+			packages = null;
+		}
+	}
+	
 }

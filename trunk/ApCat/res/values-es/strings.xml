@@ -53,4 +53,6 @@
 <string name="msg_problem_launch_app">Hubo un problema intentando ejecutar la aplicación</string>
 <string name="msg_application_added">%s: una nueva aplicación ha sido agregada</string>
 <string name="msg_application_removed">%s: una aplicación ha sido removida</string>
+<string name="change_log">&lt;b&gt;Nuevo en versión %s:&lt;/b&gt;&lt;BR&gt;&lt;BR&gt;Filtro de categorías&lt;BR&gt;&lt;BR&gt;Selección de iconos para las categorías desde cualquier pack de iconos instalado en el teléfono&lt;BR&gt;&lt;BR&gt;Incremento de velocidad al cargar aplicaciones y dibujar iconos&lt;BR&gt;&lt;BR&gt;Corrección de error al cambiar la orientación durante la carga de aplicaciones&lt;BR&gt;&lt;BR&gt;Varias mejoras visuales&lt;BR&gt;&lt;BR&gt;Algunas correcciones de errores menores</string>
+<string name="view_change_log">Ver log de cambios</string>
 </resources>

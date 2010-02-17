@@ -38,14 +38,18 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.Configuration;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.text.Html;
+import android.text.Spanned;
 import android.util.Log;
 import android.view.ContextMenu;
 import android.view.Gravity;
@@ -91,7 +95,7 @@ public class LauncherActivity extends ExpandableListActivity implements
 	
 	public static final String TAG = LauncherActivity.class.toString();
 	
-	public static PackageManager getPm()
+	public static PackageManager getPm() 
 	{
 		return pm;
 	}
@@ -115,6 +119,9 @@ public class LauncherActivity extends ExpandableListActivity implements
 		iconSize = (int) getResources().getDimension(android.R.dimen.app_icon_size);
 
 		pm = getPackageManager();
+		
+		checkShowLog();
+	
 		appdb = new AppDatabase(LauncherActivity.this);
 //		appdb.onReloadListener = this;
 		
@@ -275,13 +282,95 @@ public class LauncherActivity extends ExpandableListActivity implements
 					}
 				});
 		
+		menu.add(this.getString(R.string.view_change_log))
+		.setIcon(android.R.drawable.ic_menu_info_details)
+		.setOnMenuItemClickListener(new OnMenuItemClickListener()
+		{
+			public boolean onMenuItemClick(MenuItem item)
+			{
+				displayChangeLog();
+				return true;
+			}
+
+		});
+		
 		return true;
 	}
 
+	private int getCurrentVersion()
+	{
+    PackageManager manager = getPm();
+		try
+		{
+			PackageInfo info = manager.getPackageInfo(this.getPackageName(), 0);
+	    return info.versionCode;
+		}
+		catch (NameNotFoundException e)
+		{
+			Log.e(TAG, "", e);
+			return 0;
+		}
+	}
+
+	private String getCurrentVersionName()
+	{
+    PackageManager manager = getPm();
+		try
+		{
+			PackageInfo info = manager.getPackageInfo(this.getPackageName(), 0);
+	    return info.versionName;
+		}
+		catch (NameNotFoundException e)
+		{
+			Log.e(TAG, "", e);
+			return "n/a";
+		}
+	}
+	
+	private void checkShowLog()
+	{
+		int lastVersion = PreferencesManager.getLastVersion(this);
+		int currentVersion = getCurrentVersion();
+  	if (lastVersion != currentVersion)
+  	{
+  		PreferencesManager.putLastVersion(this, currentVersion);
+  		displayChangeLog();
+  	}
+	}
+	
+	private void displayChangeLog()
+	{
+		final FrameLayout fl = new FrameLayout(LauncherActivity.this);
+		
+		TextView text = new TextView(this);
+		Spanned sp = Html.fromHtml(String.format(this.getString(R.string.change_log), getCurrentVersionName()));
+		text.setText(sp);
+		text.setGravity(Gravity.LEFT);
+		text.setPadding(10, 0, 10, 0);
+
+		FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(
+				FrameLayout.LayoutParams.FILL_PARENT,
+				FrameLayout.LayoutParams.WRAP_CONTENT);
+		
+		fl.addView(text, layoutParams);
+
+		new AlertDialog.Builder(LauncherActivity.this).setView(fl)
+				.setPositiveButton(LauncherActivity.this.getString(R.string.ok),
+					new DialogInterface.OnClickListener()
+					{
+						@Override
+						public void onClick(DialogInterface d, int which)
+						{
+							d.dismiss();
+						}
+					}).create().show();
+	}
+	
 	private int RELOAD_FINISHED = 1;
 	private int EXPORT_FINISHED = 2;
 	private int IMPORT_FINISHED = 3;
 	private int RESET_FINISHED = 4;
+	private int SELECT_APP_FINISHED = 5;
 	
 	private final Handler handler = new Handler() 
 	{
@@ -291,7 +380,8 @@ public class LauncherActivity extends ExpandableListActivity implements
 			if ((msg.what == RELOAD_FINISHED) || 
 				(msg.what == EXPORT_FINISHED) || 
 				(msg.what == IMPORT_FINISHED) ||
-				(msg.what == RESET_FINISHED))
+				(msg.what == RESET_FINISHED) ||
+				(msg.what == SELECT_APP_FINISHED ))
 			{
 				((ProgressDialog)msg.obj).dismiss();
 			}
@@ -347,6 +437,17 @@ public class LauncherActivity extends ExpandableListActivity implements
 				setListAdapter(null);
 				new ProcessTask().execute();
 			}
+			else if (msg.what == SELECT_APP_FINISHED)
+			{
+				Intent intent = new Intent();
+				
+				intent.setClassName(AppSelectActivity.class.getPackage().getName(),
+						AppSelectActivity.class.getName());
+				
+				intent.putExtra(AppSelectActivity.groupNameIntentExtra, 
+						msg.getData().getString("categoryName"));
+				startActivityForResult(intent, ACTIVITY_CREATE);
+			}
 			
 		}
 	};
@@ -362,6 +463,13 @@ public class LauncherActivity extends ExpandableListActivity implements
 			@Override
 			public void run() 
 			{
+				//force refresh of icon packs next time IconPackSelectActivity is launched
+				if (iconPacksCache != null)
+				{
+					iconPacksCache.clear();
+					iconPacksCache = null;
+				}
+				
 				getAppdb().forceReloadApplicationData();
 				Message msg = new Message();
 				msg.obj = dialog;
@@ -763,15 +871,56 @@ public class LauncherActivity extends ExpandableListActivity implements
 
 	}
 
-	private void selectApplicationsForCategory(String categoryName)
+	private void selectApplicationsForCategory(final String categoryName)
 	{
-		Intent intent = new Intent();
+		final ProgressDialog dialog = ProgressDialogFactory.CreateDialog(LauncherActivity.this, 
+				LauncherActivity.this.getString(R.string.msg_reload_applications), -1);
+		dialog.show();
+
+		final List<Package> packages = new ArrayList<Package>();
+
+		new Thread()
+		{
+			@Override
+			public void run() 
+			{
+				getAppdb().getPackages(packages);
+				
+				//remove packages that were uninstalled
+				for ( int i = packages.size() - 1 ; i >= 0 ; i-- )
+				{
+					if (packages.get(i).getResolveInfo() == null)
+						packages.remove(i);
+				}
+				
+				final Collator collator = Collator.getInstance();
+				Collections.sort(packages, new Comparator<Package>()
+				{
+					public int compare(Package object1, Package object2)
+					{
+						return collator.compare(object1.getTitle(), object2.getTitle());
+					}
+				});
+				
+				Message msg = new Message();
+				msg.obj = dialog;
+				Bundle b = new Bundle();
+				b.putString("categoryName", categoryName);
+				msg.setData(b);
+				msg.what = SELECT_APP_FINISHED;
+				handler.sendMessage(msg);
+			}
+		}.start();
 		
-		intent.setClassName(AppSelectActivity.class.getPackage().getName(),
-				AppSelectActivity.class.getName());
+		AppSelectActivity.packages = packages;
 		
-		intent.putExtra(AppSelectActivity.groupNameIntentExtra, categoryName);
-		startActivityForResult(intent, ACTIVITY_CREATE);
+//		Intent intent = new Intent();
+//		
+//		intent.setClassName(AppSelectActivity.class.getPackage().getName(),
+//				AppSelectActivity.class.getName());
+//		
+//		intent.putExtra(AppSelectActivity.groupNameIntentExtra, categoryName);
+//		startActivityForResult(intent, ACTIVITY_CREATE);
 	}
 
 	private void deleteCategory(final String categoryName)
@@ -860,6 +1009,8 @@ public class LauncherActivity extends ExpandableListActivity implements
 						}).create().show();
 	}
 	
+	private List<IconPackInfo> iconPacksCache;
+	
 	private void selectCatIcon(String categoryName)
 	{
 		final List<ResolveInfo> apps = Utilities.getResolveInfoList(getPm());
@@ -878,79 +1029,88 @@ public class LauncherActivity extends ExpandableListActivity implements
 				
 				String thisPackageName = getPackageName();
 				
-				final List<IconPackInfo> iconPacks = new ArrayList<IconPackInfo>();
-				
-				int count = 0;
-				
-				for (ResolveInfo p : apps) 
+				if (iconPacksCache != null)
 				{
-					count++;
-					dialog.setProgress(count);
+					dialog.setProgress(apps.size());
+				}
+				else
+				{
+					iconPacksCache = new ArrayList<IconPackInfo>();
+				
+					//final List<IconPackInfo> iconPacks = new ArrayList<IconPackInfo>();
 					
-					String packageName = p.activityInfo.applicationInfo.packageName;
-					if (!packageName.startsWith("com.android") && !thisPackageName.equals(packageName) && p.activityInfo.enabled) 
+					int count = 0;
+					
+					for (ResolveInfo p : apps) 
 					{
-						String dir = p.activityInfo.applicationInfo.publicSourceDir;
-						ZipFile z = null;
-						try 
+						count++;
+						dialog.setProgress(count);
+						
+						String packageName = p.activityInfo.applicationInfo.packageName;
+						if (!packageName.startsWith("com.android") && !thisPackageName.equals(packageName) && p.activityInfo.enabled) 
 						{
-							z = new ZipFile(dir);
-							Enumeration<? extends ZipEntry> entries = z.entries();
-							while (entries.hasMoreElements()) 
+							String dir = p.activityInfo.applicationInfo.publicSourceDir;
+							ZipFile z = null;
+							try 
 							{
-								ZipEntry zipEntry = entries.nextElement();
-
-								String name = zipEntry.getName().toLowerCase();
-								if (name.startsWith("assets") && (name.endsWith(".png") || name.endsWith(".jpg")))
+								z = new ZipFile(dir);
+								Enumeration<? extends ZipEntry> entries = z.entries();
+								while (entries.hasMoreElements()) 
 								{
-									IconPackInfo packInfo = new IconPackInfo();
-									packInfo.packageName = dir;
-									packInfo.description = p.activityInfo.applicationInfo.loadLabel(getPackageManager()).toString();
-									
-									Drawable icon = p.activityInfo.loadIcon(getPm());
-									packInfo.thumb = Utilities.createIconThumbnail(icon, IconSelectActivity.ICON_CAT_SIZE);
-
-									iconPacks.add(packInfo);
-									break;
+									ZipEntry zipEntry = entries.nextElement();
+	
+									String name = zipEntry.getName().toLowerCase();
+									if (name.startsWith("assets") && (name.endsWith(".png") || name.endsWith(".jpg")))
+									{
+										IconPackInfo packInfo = new IconPackInfo();
+										packInfo.packageName = dir;
+										packInfo.description = p.activityInfo.applicationInfo.loadLabel(getPackageManager()).toString();
+										
+										Drawable icon = p.activityInfo.loadIcon(getPm());
+										packInfo.thumb = Utilities.createIconThumbnail(icon, IconSelectActivity.ICON_CAT_SIZE);
+	
+										iconPacksCache.add(packInfo);
+										break;
+									}
 								}
-							}
-						} 
-						catch (Throwable e) 
-						{
-							Log.e(TAG, "", e);
-						} 
-						finally 
-						{
-							if (z != null) 
+							} 
+							catch (Throwable e) 
 							{
-								try 
+								Log.e(TAG, "", e);
+							} 
+							finally 
+							{
+								if (z != null) 
 								{
-									z.close();
-								} 
-								catch (IOException e) 
-								{
-									Log.e(TAG, "", e);
+									try 
+									{
+										z.close();
+									} 
+									catch (IOException e) 
+									{
+										Log.e(TAG, "", e);
+									}
 								}
 							}
 						}
 					}
+					
+					final Collator collator = Collator.getInstance();
+					Collections.sort(iconPacksCache, new Comparator<IconPackInfo>()
+							{
+								public int compare(IconPackInfo object1, IconPackInfo object2)
+								{
+									return collator.compare(object1.description, object2.description);
+								}
+							});
 				}
 				
-				final Collator collator = Collator.getInstance();
-				Collections.sort(iconPacks, new Comparator<IconPackInfo>()
-						{
-							public int compare(IconPackInfo object1, IconPackInfo object2)
-							{
-								return collator.compare(object1.description, object2.description);
-							}
-						});
-
-				if (!iconPacks.isEmpty())
+				if (!iconPacksCache.isEmpty())
 				{
 					Intent intent = new Intent(LauncherActivity.this, IconPackSelectActivity.class);
 					intent.putExtra(IconSelectActivity.EXTRAS_CATEGORY_NAME, safeCategoryName);
 					
-					IconPackSelectActivity.iconPacks = (IconPackInfo[])iconPacks.toArray(new IconPackInfo[iconPacks.size()]); 
+					IconPackSelectActivity.iconPacks = (IconPackInfo[])iconPacksCache.toArray(new IconPackInfo[iconPacksCache.size()]); 
 					
 //					Bundle bundle = new Bundle(iconPacks.size());
 //					for (IconPackInfo packInfo : iconPacks)
@@ -1033,6 +1193,9 @@ public class LauncherActivity extends ExpandableListActivity implements
 	 */
 	private void updateColumns(GroupAdapter adapter, Configuration config)
 	{
+		if (adapter == null)
+			return;
+		
 		adapter.setColumns((config.orientation == Configuration.ORIENTATION_PORTRAIT) ? 4 : 6);
 	}
 
