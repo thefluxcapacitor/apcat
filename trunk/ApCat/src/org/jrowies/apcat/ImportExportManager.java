@@ -231,7 +231,7 @@ public class ImportExportManager
 				else
 					parseJSONDataVersion1(data, categories);
 
-				appdb.importData(categories, version);
+				appdb.importData(categories/*, version*/);
 				
 				ok = true;
 				
