@@ -472,7 +472,7 @@ public class AppDatabase extends SQLiteOpenHelper
 		return cache.categoriesDict.get(categoryName);
 	}
 	
-	public void importData(List<Category> data, int importDataVersion)
+	public void importData(List<Category> data/*, int importDataVersion*/)
 	{
 		SQLiteDatabase db = this.getWritableDatabase();
 		try
@@ -504,7 +504,7 @@ public class AppDatabase extends SQLiteOpenHelper
 		
 		//don't remove this line without checking before ImportExportManager.parseJSONDataVersion1 and 
 		//ImportExportManager.parseJSONDataVersion2
-		reloadApplicationData(db, importDataVersion);
+		reloadApplicationData(db, DB_VERSION);
 		
 		synchronized (cache)
 		{
